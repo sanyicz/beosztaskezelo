@@ -196,6 +196,7 @@ Beosztás:
         tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
         tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
         tk.Button(self.miscFrame, text='Műszakok kezelése', command=self.shiftManager).grid(row=1, column=0, columnspan=2)
+        tk.Button(self.miscFrame, text='Ráérések kezelése', command=self.workerRequestManager).grid(row=2, column=0, columnspan=2)
 
         self.companyRequestFrame = tk.Frame(self.companyRequestWindow, borderwidth=2, relief='ridge')
         self.companyRequestFrame.grid(row=2, column=0, sticky='W')
@@ -238,7 +239,7 @@ Beosztás:
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 self.companyRequestGrid[i][j] = self.companyRequestVariables[j][i].get()
-        print(self.companyRequestGrid)
+        #print(self.companyRequestGrid)
         
     def saveCompanyRequest(self):
         self.getCompanyRequest()
@@ -318,6 +319,7 @@ Beosztás:
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=2, column=1, columnspan=4)
         tk.Button(self.miscFrame, text='Ráérést lead', command=self.saveWorkerRequest).grid(row=3, column=1)
+        tk.Button(self.miscFrame, text='Beosztás kezelése', command=self.scheduleManager).grid(row=4, column=1)
         
         self.workerRequestFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
         self.workerRequestFrame.grid(row=2, column=0, sticky='W')
@@ -347,7 +349,7 @@ Beosztás:
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 self.workerRequestGrid[i][j] = 1 if self.requestVariables[j][i].get() else 0 #when creating these checkbuttons and variables, the indices are reversed
-        print(workerName, '\n', self.workerRequestGrid)
+        #print(workerName, '\n', self.workerRequestGrid)
 
     def saveWorkerRequest(self):
         self.getWorkerRequest()
@@ -358,7 +360,7 @@ Beosztás:
                             '(workerId, dayId, shiftId, UNIQUE(workerId, dayId, shiftId))')
         self.cursor.execute('SELECT workerId FROM workers WHERE workerName = ?', (workerName,))
         workerId = self.cursor.fetchone()[0]
-        print('Name:', workerName, 'id:', workerId)
+        #print('Name:', workerName, 'id:', workerId)
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 if self.workerRequestGrid[i][j] == 1:
@@ -371,82 +373,95 @@ Beosztás:
 #schedule creation
 
     def scheduleManager(self):
-        #gui for creating schedule 
-        self.scheduleWindow = tk.Toplevel()
-        self.scheduleWindow.grab_set()
-        tk.Label(self.scheduleWindow, text='Beosztás kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
-        self.scheduleWindow.bind('<Enter>', self.highlightOn)
-        self.scheduleWindow.bind('<Leave>', self.highlightOff)
-
-        self.miscFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
-        self.miscFrame.grid(row=1, column=0, sticky='W')
-        tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
-        tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
-        tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
-        tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-        tk.Button(self.miscFrame, text='Beosztás készítése', command=self.createScheduleByHand).grid(row=1, column=0, columnspan=2)
-        tk.Button(self.miscFrame, text='Beosztás kiegészítése', command=self.fillCreatedSchedule).grid(row=1, column=2, columnspan=2)
-        tk.Button(self.miscFrame, text='Export xlsx-be', command=self.scheduleExportXlsx).grid(row=1, column=4, columnspan=2)
+        #gui for creating schedule
+        tableExists = 1
         year = self.year.get()
         week = self.week.get()
+        try:
+            self.cursor.execute('SELECT * FROM workerRequests_' + str(year) + '_' + str(week))
+        except:
+            tableExists = 0
+            
+        if tableExists == 0:
+            text = 'Table workerRequests_' + str(year) + '_' + str(week) + ' does not exist.'
+            self.messageWindow = tk.Toplevel()
+            self.messageWindow.grab_set()
+            print(text)
+            tk.Label(self.messageWindow, text=text).grid(row=0, column=0)
+        else:
+            self.scheduleWindow = tk.Toplevel()
+            self.scheduleWindow.grab_set()
+            self.scheduleWindow.bind('<Enter>', self.highlightOn)
+            self.scheduleWindow.bind('<Leave>', self.highlightOff)
+            tk.Label(self.scheduleWindow, text='Beosztás kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
 
-        self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
-        self.scheduleFrame.grid(row=2, column=0, sticky='W')
-        self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
-        requests = [0]*len(self.shifts)
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
+            self.miscFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
+            self.miscFrame.grid(row=1, column=0, sticky='W')
+            tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
+            tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
+            tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
+            tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
+            tk.Button(self.miscFrame, text='Beosztás készítése', command=self.createScheduleByHand).grid(row=1, column=0, columnspan=2)
+            tk.Button(self.miscFrame, text='Beosztás kiegészítése', command=self.fillCreatedSchedule).grid(row=1, column=2, columnspan=2)
+            tk.Button(self.miscFrame, text='Export xlsx-be', command=self.scheduleExportXlsx).grid(row=1, column=4, columnspan=2)
+
+            self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
+            self.scheduleFrame.grid(row=2, column=0, sticky='W')
+            self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
+            requests = [0]*len(self.shifts)
+            for j in range(0, len(self.days)):
+                self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+                dayId = self.cursor.fetchone()[0]
+                for i in range(0, len(self.shifts)):
+                    self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                    shiftId = self.cursor.fetchone()[0]
+                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workerIds = self.cursor.fetchall()
+                    if len(workerIds) >= requests[i]:
+                        requests[i] = len(workerIds)
+            row = 3
+            for j in range(0, len(self.days)):
+                tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=2, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
             for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerIds = self.cursor.fetchall()
-                if len(workerIds) >= requests[i]:
-                    requests[i] = len(workerIds)
-        row = 3
-        for j in range(0, len(self.days)):
-            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=2, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
-        for i in range(0, len(self.shifts)):
-            tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
-            row = row + requests[i]
-        for j in range(0, len(self.days)):
-            self.scheduleByHandCheckbuttons.append([])
-            self.scheduleByHandVariables.append([])
-            self.scheduleByHandNameLabels.append([])
-            gridRow = 3
-            gridRow_ = gridRow
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.scheduleByHandCheckbuttons[j].append([])
-                self.scheduleByHandVariables[j].append([])
-                self.scheduleByHandNameLabels[j].append([])
-                tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=gridRow, column=0)
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerIds = self.cursor.fetchall()
-                for k in range(0, requests[i]):
-                    try:
-                        workerId = workerIds[k][0]
-                        self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
-                        workerName = self.cursor.fetchone()[0]
-                        nameLabel = tk.Label(self.scheduleFrame, text=workerName)
-                        nameLabel.grid(row=gridRow_, column=1+2*j) #!!!!!!!!! column
-                        self.scheduleByHandNameLabels[j][i].append(nameLabel)
-                        variable = tk.BooleanVar()
-                        checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
-                        checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
-                        self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
-                        self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
-                    except:
-                        tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j) #shitty solution to fill empty spaces (rowconfigure?)
-                    gridRow_ += 1
-                gridRow = gridRow + requests[i]
-##        print(self.scheduleByHandVariables)
+                tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
+                row = row + requests[i]
+            for j in range(0, len(self.days)):
+                self.scheduleByHandCheckbuttons.append([])
+                self.scheduleByHandVariables.append([])
+                self.scheduleByHandNameLabels.append([])
+                gridRow = 3
+                gridRow_ = gridRow
+                self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+                dayId = self.cursor.fetchone()[0]
+                for i in range(0, len(self.shifts)):
+                    self.scheduleByHandCheckbuttons[j].append([])
+                    self.scheduleByHandVariables[j].append([])
+                    self.scheduleByHandNameLabels[j].append([])
+                    tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=gridRow, column=0)
+                    self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                    shiftId = self.cursor.fetchone()[0]
+                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workerIds = self.cursor.fetchall()
+                    for k in range(0, requests[i]):
+                        try:
+                            workerId = workerIds[k][0]
+                            self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
+                            workerName = self.cursor.fetchone()[0]
+                            nameLabel = tk.Label(self.scheduleFrame, text=workerName)
+                            nameLabel.grid(row=gridRow_, column=1+2*j) #!!!!!!!!! column
+                            self.scheduleByHandNameLabels[j][i].append(nameLabel)
+                            variable = tk.BooleanVar()
+                            checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
+                            checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
+                            self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
+                            self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
+                        except:
+                            tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j) #shitty solution to fill empty spaces (rowconfigure?)
+                        gridRow_ += 1
+                    gridRow = gridRow + requests[i]
+            #print(self.scheduleByHandVariables)
 
     def getNumberOfRequestedDays(self):
         self.numberOfRequestedDays = {}
@@ -598,7 +613,7 @@ Beosztás:
         print('Workers needed for the week: ', self.wN)
         print('Workers left to schedule for the week: ', self.wL)
         self.getNumberOfScheduledDays()
-        self.showSchedule() #calls self.showSchedule to load and show the created schedule
+        self.loadSchedule()
         self.connection.commit()
 
     def loadSchedule(self):
@@ -638,7 +653,6 @@ Beosztás:
                 self.backup[j].append(workerNames)
 
     def showSchedule(self):
-        self.loadSchedule()
         requests, row = [4, 1, 4], 4 #row: starting row is the one under the buttons
         for j in range(0, len(self.days)):
             tk.Label(self.scheduleFrame, text=self.days[j], width=8, font='Helvetica 10 bold').grid(row=3, column=1+j)
@@ -777,7 +791,7 @@ Beosztás:
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            widgetList = self.scheduleWindow.winfo_children()
+            widgetList = self.scheduleFrame.winfo_children()
             highlightList = []
             for widget in widgetList:
                if isinstance(widget, tkinter.Label):
@@ -794,7 +808,7 @@ Beosztás:
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            widgetList = self.scheduleWindow.winfo_children()
+            widgetList = self.scheduleFrame.winfo_children()
             highlightList = []
             for widget in widgetList:
                if isinstance(widget, tkinter.Label):
