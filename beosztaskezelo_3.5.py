@@ -11,6 +11,7 @@ class SHScheduler(tk.Frame): #class inheritance
     def __init__(self, parentWindow):
         tk.Frame.__init__(self, parentWindow) #?
         self.mainWindow = parentWindow #?
+        #self.mainWindow.geometry('300x200')
         self.mainWindow.title('Beosztáskezelő')
         self.loadDatabase('sh_database.db') #ha askopenfilename-mel történik, utána az entry-k nem szerkeszhetők
         self.listDays()
@@ -124,6 +125,7 @@ Beosztás:
         tk.Button(self.workerDataFrame, text='Dolgozó felvétele', command=self.addWorker).grid(row=1, column=2)
         tk.Button(self.workerDataFrame, text='Dolgozó törlése', command=self.deleteWorker).grid(row=1, column=3)
         tk.Label(self.workerDataFrame, text='Adatok', font=('Helvetica 10 bold')).grid(row=2, column=0, columnspan=2, sticky='W')
+        tk.Button(self.workerDataFrame, text='Adatok mentése', command=self.saveWorkerData).grid(row=3, column=2)
         tk.Label(self.workerDataFrame, text='Születési idő').grid(row=3, column=0)
         self.dateOfBirthVariable = tk.StringVar()
         tk.Entry(self.workerDataFrame, textvariable=self.dateOfBirthVariable).grid(row=3, column=1)
@@ -133,6 +135,9 @@ Beosztás:
         tk.Label(self.workerDataFrame, text='Tagság érvényessége').grid(row=5, column=0)
         self.membershipValidityVariable = tk.StringVar()
         tk.Entry(self.workerDataFrame, textvariable=self.membershipValidityVariable).grid(row=5, column=1)
+        tk.Label(self.workerDataFrame, text='Aktív').grid(row=6, column=0)
+        self.isActive = tk.BooleanVar()
+        tk.Checkbutton(self.workerDataFrame, variable=self.isActive).grid(row=6, column=1)
 
     def nameMenuSelectionEvent(self, event):
         #not works after adding or deleting a worker
@@ -153,11 +158,7 @@ Beosztás:
             
     def addWorker(self):
         workerName = self.workerName.get()
-        dateOfBirth = self.dateOfBirthVariable.get()
-        phoneNumber = self.phoneNumberVariable.get()
-        membershipValidity = self.membershipValidityVariable.get()
-        self.cursor.execute('INSERT OR IGNORE INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity) VALUES (?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity))
-        self.saveDatabase()
+        self.saveWorkerData()
         self.listWorkers()
         self.nameOptions.destroy()
         self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
@@ -178,10 +179,24 @@ Beosztás:
         #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that
         print(workerName + ' törölve')
 
+    def saveWorkerData(self):
+        workerName = self.workerName.get()
+        dateOfBirth = self.dateOfBirthVariable.get()
+        phoneNumber = self.phoneNumberVariable.get()
+        membershipValidity = self.membershipValidityVariable.get()
+        isActive = self.isActive.get()
+        #print(workerName, dateOfBirth)
+        #print('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
+        try:
+            self.cursor.execute('INSERT INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive) VALUES (?, ?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive))
+        except:
+            self.cursor.execute('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
+        self.saveDatabase()
+
 
 #------------------------------------------------------------------------------------------------------
 #Company requests
-        
+    
     def companyRequestManager(self):
         #gui for handling company requests
         self.companyRequestWindow = tk.Toplevel()
@@ -230,7 +245,7 @@ Beosztás:
                     self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                     shiftId = self.cursor.fetchone()[0]
                     self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = '
-                                        + str(dayId) + ' AND shiftID = ' + str(shiftId))
+                                        + str(dayId) + ' AND shiftId = ' + str(shiftId))
                     workerNumber = self.cursor.fetchone()[0]
                     self.companyRequestVariables[j][i].set(workerNumber)
 
@@ -390,7 +405,7 @@ Beosztás:
             tk.Label(self.messageWindow, text=text).grid(row=0, column=0)
         else:
             self.scheduleWindow = tk.Toplevel()
-            self.scheduleWindow.grab_set()
+            #self.scheduleWindow.grab_set()
             self.scheduleWindow.bind('<Enter>', self.highlightOn)
             self.scheduleWindow.bind('<Leave>', self.highlightOff)
             tk.Label(self.scheduleWindow, text='Beosztás kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
@@ -401,104 +416,21 @@ Beosztás:
             tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
             tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
             tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-            tk.Button(self.miscFrame, text='Beosztás készítése', command=self.createScheduleByHand).grid(row=1, column=0, columnspan=2)
+            tk.Button(self.miscFrame, text='Ráérések kiírása', command=self.showWorkerRequests).grid(row=0, column=4, columnspan=2)
+            tk.Button(self.miscFrame, text='Beosztás készítése', command=self.createSchedule).grid(row=1, column=0, columnspan=2)
             tk.Button(self.miscFrame, text='Beosztás kiegészítése', command=self.fillCreatedSchedule).grid(row=1, column=2, columnspan=2)
-            tk.Button(self.miscFrame, text='Export xlsx-be', command=self.scheduleExportXlsx).grid(row=1, column=4, columnspan=2)
+            tk.Label(self.miscFrame, text='Algoritmus').grid(row=1, column=4)
+            self.algorithmList = ['random', 'frommin']
+            self.algorithmVar = tk.StringVar()
+            self.algorithmVar.set(self.algorithmList[0])
+            tk.OptionMenu(self.miscFrame, self.algorithmVar, *self.algorithmList).grid(row=1, column=5)
+            tk.Button(self.miscFrame, text='Beosztás kiírása', command=self.showSchedule).grid(row=2, column=0, columnspan=2)
+            tk.Button(self.miscFrame, text='Export xlsx-be', command=self.scheduleExportXlsx).grid(row=2, column=2, columnspan=2)
+            tk.Button(self.miscFrame, text='Beosztás törlése', command=self.deleteSchedule).grid(row=3, column=0, columnspan=2)
+            self.showWorkerRequests()
 
-            self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
-            self.scheduleFrame.grid(row=2, column=0, sticky='W')
-            self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
-            requests = [0]*len(self.shifts)
-            for j in range(0, len(self.days)):
-                self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-                dayId = self.cursor.fetchone()[0]
-                for i in range(0, len(self.shifts)):
-                    self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                    shiftId = self.cursor.fetchone()[0]
-                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workerIds = self.cursor.fetchall()
-                    if len(workerIds) >= requests[i]:
-                        requests[i] = len(workerIds)
-            row = 3
-            for j in range(0, len(self.days)):
-                tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=2, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
-            for i in range(0, len(self.shifts)):
-                tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
-                row = row + requests[i]
-            for j in range(0, len(self.days)):
-                self.scheduleByHandCheckbuttons.append([])
-                self.scheduleByHandVariables.append([])
-                self.scheduleByHandNameLabels.append([])
-                gridRow = 3
-                gridRow_ = gridRow
-                self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-                dayId = self.cursor.fetchone()[0]
-                for i in range(0, len(self.shifts)):
-                    self.scheduleByHandCheckbuttons[j].append([])
-                    self.scheduleByHandVariables[j].append([])
-                    self.scheduleByHandNameLabels[j].append([])
-                    tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=gridRow, column=0)
-                    self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                    shiftId = self.cursor.fetchone()[0]
-                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workerIds = self.cursor.fetchall()
-                    for k in range(0, requests[i]):
-                        try:
-                            workerId = workerIds[k][0]
-                            self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
-                            workerName = self.cursor.fetchone()[0]
-                            nameLabel = tk.Label(self.scheduleFrame, text=workerName)
-                            nameLabel.grid(row=gridRow_, column=1+2*j) #!!!!!!!!! column
-                            self.scheduleByHandNameLabels[j][i].append(nameLabel)
-                            variable = tk.BooleanVar()
-                            checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
-                            checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
-                            self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
-                            self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
-                        except:
-                            tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j) #shitty solution to fill empty spaces (rowconfigure?)
-                        gridRow_ += 1
-                    gridRow = gridRow + requests[i]
-            #print(self.scheduleByHandVariables)
-
-    def getNumberOfRequestedDays(self):
-        self.numberOfRequestedDays = {}
-        year = self.year.get()
-        week = self.week.get()
-        self.cursor.execute('SELECT workerId FROM workers')
-        workerIds = [row[0] for row in self.cursor.fetchall()]
-        #print(workerIds)
-        for workerId in workerIds:
-            self.cursor.execute('SELECT dayId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                ' WHERE workerId = ?', (workerId,))
-            dayIds = [row[0] for row in self.cursor.fetchall()]
-            dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
-            self.numberOfRequestedDays[workerId] = (dayIds, len(dayIds))
-        print('numberOfRequestedDays')
-        print(self.numberOfRequestedDays)
-
-    def getNumberOfScheduledDays(self):
-        self.numberOfScheduledDays = {}
-        year = self.year.get()
-        week = self.week.get()
-        self.cursor.execute('SELECT workerId FROM workers')
-        workerIds = [row[0] for row in self.cursor.fetchall()]
-        #print(workerIds)
-        for workerId in workerIds:
-            self.cursor.execute('SELECT dayId FROM schedule_' + str(year) + '_' + str(week) +
-                                ' WHERE workerId = ?', (workerId,))
-            dayIds = [row[0] for row in self.cursor.fetchall()]
-            dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
-            self.numberOfScheduledDays[workerId] = (dayIds, len(dayIds))
-        print('numberOfScheduledDays')
-        print(self.numberOfScheduledDays)
-
-    def workersRequested(self):
-        #all the workers requested for the week by the company
-        #the sum of all company requests for every shift of every day of the week
-        self.wN = 0
+    def loadWorkerRequestsListToShow(self):
+        requests = [0]*len(self.shifts)
         year = self.year.get()
         week = self.week.get()
         for j in range(0, len(self.days)):
@@ -507,114 +439,67 @@ Beosztás:
             for i in range(0, len(self.shifts)):
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerNumber = self.cursor.fetchone()[0]
-                self.wN += workerNumber
-
-    def workersLeft(self):
-        #all the workers left to schedule for the week
-        #the sum of all worker requests for every shift of every day of the week
-        self.wL = 0
-        year = self.year.get()
-        week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                try:
-                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
-                    self.wL += len(self.cursor.fetchall())
-                except:
-                    pass
-
-    def createSchedule(self):
-        self.workersRequested()
-        print('Total company requests :', self.wN)
-        self.workersLeft()
-        print('Total worker requests :', self.wL)
-        self.getNumberOfRequestedDays()
-        algorithm = self.algorithmVar.get() #random or frommin
-        year = self.year.get()
-        week = self.week.get()
-        self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
-        self.cursor.execute('CREATE TABLE schedule_'  + str(year) + '_' + str(week) +
-                            '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
-        self.cursor.execute( 'SELECT * FROM workerRequests_' + str(year) + '_' + str(week) )
-        workerRequests = self.cursor.fetchall()
-        if algorithm == 'random':
-            random.shuffle(workerRequests)
-            print(len(workerRequests))
-            for row in workerRequests:
-                workerId, dayId, shiftId = row[0], row[1], row[2]
-                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workers = self.cursor.fetchall()
-                self.cursor.execute('SELECT workerNumber FROM companyRequest' +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workersNeeded = self.cursor.fetchone()[0]
-                if len(workers) < workersNeeded:
-                    if not workerId in workers:
-                        self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
-                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
-##                        if self.wN <= 0 or self.wL <=0: #if the schedule is complete or there are no more free workers
-##                            break
-##                        self.wN -= 1
-##                        self.cursor.execute('SELECT shiftId FROM workerRequests_' + str(year) + '_' + str(week) +
-##                                            ' WHERE workerId = ' + str(workerId) + ' AND dayId = ' + str(dayId) )
-##                        self.wL -= len(self.cursor.fetchall())
-        elif algorithm == 'frommin':
-            self.cursor.execute('SELECT * FROM workers ORDER BY workDaysWeekly')
-            workers = self.cursor.fetchall()
-            for worker in workers:
-                workerId = worker[0]
-                self.cursor.execute('SELECT * FROM workerRequests_' + str(year) + '_' + str(week) +
-                                    ' WHERE workerId = ' + str(workerId) )
-                for row in self.cursor.fetchall():
-                    dayId, shiftId = row[1], row[2]
-                    self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workers = self.cursor.fetchall()
-                    self.cursor.execute('SELECT workerNumber FROM companyRequest' +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workersNeeded = self.cursor.fetchone()[0]
-                    if len(workers) < workersNeeded:
-                        if not workerId in workers:
-                            self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
-                                                '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
-##                            if self.wN <= 0 or self.wL <=0: #if the schedule is complete or there are no more free workers
-##                                break
-##                            self.wN -= 1
-##                            self.cursor.execute('SELECT shiftId FROM workerRequests_' + str(year) + '_' + str(week) +
-##                                            ' WHERE workerId = ' + str(workerId) + ' AND dayId = ' + str(dayId) )
-##                            self.wL -= len(self.cursor.fetchall())
-        self.cursor.execute('DROP TABLE IF EXISTS backup_'  + str(year) + '_' + str(week))
-        self.cursor.execute('CREATE TABLE backup_'  + str(year) + '_' + str(week) +
-                            '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) )
-                workerIdsSchedule = self.cursor.fetchall()
                 self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerIdsRequests = self.cursor.fetchall()
-                for id_ in workerIdsRequests:
-                    if not id_ in workerIdsSchedule:
-                        row = id_[0], dayId, shiftId
-                        self.cursor.execute('INSERT OR IGNORE INTO backup_' + str(year) + '_' + str(week) +
-                                            ' (workerId, dayId, shiftId) VALUES (?, ?, ?)', row)
-        print('Workers needed for the week: ', self.wN)
-        print('Workers left to schedule for the week: ', self.wL)
-        self.getNumberOfScheduledDays()
-        self.loadSchedule()
-        self.connection.commit()
+                workerIds = self.cursor.fetchall()
+                if len(workerIds) >= requests[i]:
+                    requests[i] = len(workerIds)
+        print(requests)
+        return requests
+
+    def showWorkerRequests(self):
+        year = self.year.get()
+        week = self.week.get()
+        row = 3
+        requests = self.loadWorkerRequestsListToShow()
+        try:
+            self.scheduleFrame.destroy()
+        except:
+            pass
+        self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
+        self.scheduleFrame.grid(row=2, column=0, sticky='W')
+        self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
+        for j in range(0, len(self.days)):
+            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=2, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
+        for i in range(0, len(self.shifts)):
+            tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
+            row = row + requests[i]
+        for j in range(0, len(self.days)):
+            self.scheduleByHandCheckbuttons.append([])
+            self.scheduleByHandVariables.append([])
+            self.scheduleByHandNameLabels.append([])
+            gridRow = 3
+            gridRow_ = gridRow
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.scheduleByHandCheckbuttons[j].append([])
+                self.scheduleByHandVariables[j].append([])
+                self.scheduleByHandNameLabels[j].append([])
+                tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=gridRow, column=0)
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerIds = self.cursor.fetchall()
+                for k in range(0, requests[i]):
+                    try:
+                        workerId = workerIds[k][0]
+                        self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
+                        workerName = self.cursor.fetchone()[0]
+                        nameLabel = tk.Label(self.scheduleFrame, text=workerName)
+                        nameLabel.grid(row=gridRow_, column=1+2*j) #!!!!!!!!! column
+                        self.scheduleByHandNameLabels[j][i].append(nameLabel)
+                        variable = tk.BooleanVar()
+                        checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
+                        checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
+                        self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
+                        self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
+                    except:
+                        tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j) #shitty solution to fill empty spaces (rowconfigure?)
+                    gridRow_ += 1
+                gridRow = gridRow + requests[i]
+        #print(self.scheduleByHandVariables)
 
     def loadSchedule(self):
         year = self.year.get()
@@ -651,34 +536,49 @@ Beosztás:
                     workerNames.append(workerName)
                 #workerNames.sort()
                 self.backup[j].append(workerNames)
+        #print(self.schedule)
 
     def showSchedule(self):
-        requests, row = [4, 1, 4], 4 #row: starting row is the one under the buttons
-        for j in range(0, len(self.days)):
-            tk.Label(self.scheduleFrame, text=self.days[j], width=8, font='Helvetica 10 bold').grid(row=3, column=1+j)
-        for i in range(0, len(self.shifts)):
-            tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
-            row = row + requests[i]
-        for j in range(0, len(self.days)):
-            row_ = 4
-            row = row_
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!fix requests = [4, 1, 4]
+        try:
+            self.loadSchedule()
+            self.showScheduleWindow = tk.Toplevel()
+            self.showScheduleFrame = tk.Frame(self.showScheduleWindow, borderwidth=2, relief='ridge')
+            self.showScheduleFrame.grid(row=3, column=0, sticky='W')
+            requests, row = [4, 1, 4], 4 #row: starting row is the one under the buttons
+            for j in range(0, len(self.days)):
+                tk.Label(self.showScheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=3, column=1+j)
             for i in range(0, len(self.shifts)):
-                for k in range(0, requests[i]):
-                    try:
-                        workerName = self.schedule[j][i][k]
-                    except:
-                        workerName = ''
-                    tk.Label(self.scheduleFrame, text=workerName, width=12).grid(row=row, column=1+j)
-                    row += 1
-            row_ = row_ + requests[i]
+                tk.Label(self.showScheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
+                row = row + requests[i]
+            for j in range(0, len(self.days)):
+                row_ = 4
+                row = row_
+                for i in range(0, len(self.shifts)):
+                    for k in range(0, requests[i]):
+                        try:
+                            workerName = self.schedule[j][i][k]
+                        except:
+                            workerName = ''
+                        tk.Label(self.showScheduleFrame, text=workerName).grid(row=row, column=1+j)
+                        row += 1
+                row_ = row_ + requests[i]
+        except:
+            self.showScheduleWindow = tk.Toplevel()
+            self.showScheduleWindow.grab_set()
+            year = self.year.get()
+            week = self.week.get()
+            tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
 
     def scheduleExportXlsx(self):
+        self.loadSchedule()
         year = self.year.get()
         week = self.week.get()
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         worksheet.title = 'schedule_' + str(year) + '_' + str(week)
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!fix requests = [4, 1, 4]
         requests, row = [4, 1, 4], 2
         for j in range(0, len(self.days)):
             worksheet.cell(row=1, column=2+j).value = self.days[j]
@@ -728,6 +628,13 @@ Beosztás:
                     row += 1
             row_ = row_ + requests[i]
         workbook.save(filename=filename)
+
+    def deleteSchedule(self):
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('DROP TABLE IF EXISTS schedule_' + str(year) + '_' + str(week))
+        self.cursor.execute('DROP TABLE IF EXISTS backup_' + str(year) + '_' + str(week))
+        self.saveDatabase()
     
     def disableWorkerSelection(self, column, row, row_k, nameToDisable):
         #if someone is scheduled to work in a shfit, he/she can't work on the given day
@@ -747,45 +654,7 @@ Beosztás:
 ##                        print(self.scheduleByHandNameLabels[column][i][k]['text'])
                         if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
                             self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'normal'
-            
-    def createScheduleByHand(self):
-        year = self.year.get()
-        week = self.week.get()
-        self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
-        self.cursor.execute('CREATE TABLE schedule_'  + str(year) + '_' + str(week) +
-                            '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
-        for day in range(0, len(self.scheduleByHandVariables)):
-            #print(day)
-            for shift in range(0, len(self.scheduleByHandVariables[day])):
-                #print(shift)
-                for row in self.scheduleByHandVariables[day][shift]:
-                    #print(row[0].get(), row[2])
-                    if row[0].get()==True:
-                        #print(day, shift, row[0].get(), row[2])
-                        self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
-                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (row[1], day, shift) )
-        self.saveDatabase()
 
-    def fillCreatedSchedule(self):
-        year = self.year.get()
-        week = self.week.get()
-        self.createScheduleByHand()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                partialScheduledWorkers = self.cursor.fetchall()
-                self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerNeeded = self.cursor.fetchone()[0]
-                if workerNeeded > len(partialScheduledWorkers):
-                    workerNeeded -= len(partialScheduledWorkers)
-                #print(dayId, shiftId, workerNeeded)
-                self.cursor.execute('UPDATE companyRequest SET workerNumber = ' + str(workerNeeded) + ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                
     def highlightOn(self, event):
         #when the mouse hovers over a name, highlights all of his/her requests for the week in red
         try:
@@ -820,6 +689,186 @@ Beosztás:
         except:
             pass
 
+    def createBackup(self):
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('DROP TABLE IF EXISTS backup_'  + str(year) + '_' + str(week))
+        self.cursor.execute('CREATE TABLE backup_'  + str(year) + '_' + str(week) +
+                            '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) )
+                workerIdsSchedule = self.cursor.fetchall()
+                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerIdsRequests = self.cursor.fetchall()
+                for id_ in workerIdsRequests:
+                    if not id_ in workerIdsSchedule:
+                        row = id_[0], dayId, shiftId
+                        self.cursor.execute('INSERT OR IGNORE INTO backup_' + str(year) + '_' + str(week) +
+                                            ' (workerId, dayId, shiftId) VALUES (?, ?, ?)', row)
+
+    def createSchedule(self):
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
+        self.cursor.execute('CREATE TABLE schedule_'  + str(year) + '_' + str(week) +
+                            '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
+        for day in range(0, len(self.scheduleByHandVariables)):
+            for shift in range(0, len(self.scheduleByHandVariables[day])):
+                for row in self.scheduleByHandVariables[day][shift]:
+                    #row = [variable, workerId, workerName]
+                    if row[0].get()==True:
+                        #print(day, shift, row[0].get(), row[2])
+                        self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
+                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (row[1], day, shift) )
+        self.createBackup()
+        self.saveDatabase()
+
+
+    def fillCreatedSchedule(self):
+        year = self.year.get()
+        week = self.week.get()
+        self.createSchedule()
+        
+        self.cursor.execute('DROP TABLE IF EXISTS companyRequestModified')
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest WHERE 0')
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                partialScheduledWorkers = self.cursor.fetchall()
+                self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerNeeded = self.cursor.fetchone()[0]
+                if workerNeeded > len(partialScheduledWorkers):
+                    workerNeeded -= len(partialScheduledWorkers)
+                else:
+                    workerNeeded = 0
+                #print(dayId, shiftId, workerNeeded)
+                self.cursor.execute('INSERT INTO companyRequestModified (dayId, shiftId, workerNumber) VALUES (?, ?, ?) ', (dayId, shiftId, workerNeeded))
+
+        if self.algorithmVar.get() == 'random':
+            self.cursor.execute( 'SELECT * FROM workerRequests_' + str(year) + '_' + str(week) )
+            workerRequests = self.cursor.fetchall()
+            random.shuffle(workerRequests)
+            #print(len(workerRequests))
+            for row in workerRequests:
+                workerId, dayId, shiftId = row[0], row[1], row[2]
+                self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workers = self.cursor.fetchall()
+                self.cursor.execute('SELECT workerNumber FROM companyRequestModified' +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workersNeeded = self.cursor.fetchone()[0]
+                if len(workers) < workersNeeded:
+                    if not workerId in workers:
+                        self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
+                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
+        elif self.algorithmVar.get() == 'frommin':
+            self.getNumberOfRequestedDays()
+            self.cursor.execute('SELECT * FROM workers ORDER BY requestedDaysWeekly')
+            workers = self.cursor.fetchall()
+            for worker in workers:
+                workerId = worker[0]
+                self.cursor.execute('SELECT * FROM workerRequests_' + str(year) + '_' + str(week) +
+                                    ' WHERE workerId = ' + str(workerId) )
+                for row in self.cursor.fetchall():
+                    dayId, shiftId = row[1], row[2]
+                    self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workers = self.cursor.fetchall()
+                    self.cursor.execute('SELECT workerNumber FROM companyRequestModified' +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workersNeeded = self.cursor.fetchone()[0]
+                    if len(workers) < workersNeeded:
+                        if not workerId in workers:
+                            self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
+                                                '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
+        self.createBackup()
+        self.getNumberOfScheduledDays()
+        self.saveDatabase()
+
+    def getNumberOfRequestedDays(self):
+        self.numberOfRequestedDays = {}
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('SELECT workerId FROM workers')
+        workerIds = [row[0] for row in self.cursor.fetchall()]
+        #print(workerIds)
+        for workerId in workerIds:
+            self.cursor.execute('SELECT dayId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                ' WHERE workerId = ?', (workerId,))
+            dayIds = [row[0] for row in self.cursor.fetchall()]
+            dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
+            self.numberOfRequestedDays[workerId] = (dayIds, len(dayIds))
+            self.cursor.execute( 'UPDATE workers SET requestedDaysWeekly = "' + str(len(dayIds)) + '" WHERE workerId = "' + str(workerId) + '"' )
+        #print('numberOfRequestedDays:', self.numberOfRequestedDays)
+
+    def getNumberOfScheduledDays(self):
+        self.numberOfScheduledDays = {}
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('SELECT workerId FROM workers')
+        workerIds = [row[0] for row in self.cursor.fetchall()]
+        #print(workerIds)
+        for workerId in workerIds:
+            self.cursor.execute('SELECT dayId FROM schedule_' + str(year) + '_' + str(week) +
+                                ' WHERE workerId = ?', (workerId,))
+            dayIds = [row[0] for row in self.cursor.fetchall()]
+            dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
+            self.numberOfScheduledDays[workerId] = (dayIds, len(dayIds))
+            self.cursor.execute( 'UPDATE workers SET scheduledDaysWeekly = "' + str(len(dayIds)) + '" WHERE workerId = "' + str(workerId) + '"' )
+        #print('numberOfScheduledDays: ' + self.numberOfScheduledDays)
+
+
+
+
+    def workersRequested(self):
+        #all the workers requested for the week by the company
+        #the sum of all company requests for every shift of every day of the week
+        self.wN = 0
+        year = self.year.get()
+        week = self.week.get()
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerNumber = self.cursor.fetchone()[0]
+                self.wN += workerNumber
+
+    def workersLeft(self):
+        #all the workers left to schedule for the week
+        #the sum of all worker requests for every shift of every day of the week
+        self.wL = 0
+        year = self.year.get()
+        week = self.week.get()
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                try:
+                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
+                    self.wL += len(self.cursor.fetchall())
+                except:
+                    pass
+
+        
+        
 
 if __name__ == '__main__':
     root = tk.Tk()
