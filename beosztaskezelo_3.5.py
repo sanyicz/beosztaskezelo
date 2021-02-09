@@ -346,12 +346,18 @@ Beosztás:
         for j in range(0, len(self.days)):
             self.requestCheckbuttons.append([])
             self.requestVariables.append([])
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
             for i in range(0, len(self.shifts)):
-                variable = tk.BooleanVar()
-                checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
-                checkbutton.grid(row=2+i, column=1+j)
-                self.requestCheckbuttons[j].append(checkbutton)
-                self.requestVariables[j].append(variable)
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                if self.cursor.fetchone()[0] > 0:
+                    variable = tk.BooleanVar()
+                    checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
+                    checkbutton.grid(row=2+i, column=1+j)
+                    self.requestCheckbuttons[j].append(checkbutton)
+                    self.requestVariables[j].append(variable)
 
     def optionMenuSelectionEvent(self, event):
         for daysCheckbuttons in self.requestCheckbuttons:
@@ -483,6 +489,10 @@ Beosztás:
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 workerIds = self.cursor.fetchall()
                 for k in range(0, requests[i]):
+##                    workerId = workerIds[k][0]
+##                    self.cursor.execute( 'SELECT * FROM schedule_' + str(year) + '_' + str(week) +
+##                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) + ' AND workerId = ' + str(workerId) )
+##                    print(self.cursor.fetchall())
                     try:
                         workerId = workerIds[k][0]
                         self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
@@ -493,6 +503,10 @@ Beosztás:
                         variable = tk.BooleanVar()
                         checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
                         checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
+                        self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
+                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous work)
+                        if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]: #if a worker is scheduled, check the box
+                            checkbutton.select()
                         self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
                         self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
                     except:
