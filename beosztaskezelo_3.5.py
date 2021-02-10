@@ -51,6 +51,7 @@ class SHScheduler(tk.Frame): #class inheritance
 
     def listShifts(self):
         self.cursor.execute('SELECT shiftName FROM shifts ORDER BY shiftId')
+##        self.cursor.execute('SELECT shiftName FROM shifts WHERE isActive = 1 ORDER BY shiftId')
         arrayShifts = self.cursor.fetchall()
         self.shifts = []
         for i in range(0, len(arrayShifts)):
@@ -164,7 +165,7 @@ Beosztás:
         self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=0, column=1)
-        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that
+        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
         print(workerName + ' hozzáadva')
 
     def deleteWorker(self):
@@ -176,7 +177,7 @@ Beosztás:
         self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=0, column=1)
-        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that
+        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
         print(workerName + ' törölve')
 
     def saveWorkerData(self):
@@ -191,6 +192,9 @@ Beosztás:
             self.cursor.execute('INSERT INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive) VALUES (?, ?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive))
         except:
             self.cursor.execute('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET phoneNumber = "' + phoneNumber + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET membershipValidity = "' + membershipValidity + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET isActive = "' + str(isActive) + '" WHERE workerName = "' + workerName + '"')
         self.saveDatabase()
 
 
@@ -290,6 +294,7 @@ Beosztás:
         self.miscFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
         self.miscFrame.grid(row=1, column=0, sticky='W')
         tk.Button(self.miscFrame, text='Új műszak', command=self.addShift).grid(row=0, column=0)
+        tk.Button(self.miscFrame, text='Műszakok mentése', command=self.saveShifts).grid(row=0, column=1)
         self.shiftsFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
         self.shiftsFrame.grid(row=2, column=0, sticky='W')
         self.shiftCheckbuttons, self.shiftVariables = [], []
@@ -311,6 +316,13 @@ Beosztás:
         self.addShiftWindow.grab_set()
         self.addShiftWindow.title('Új műszak')
 
+    def saveShifts(self):
+        for i in range(0, len(self.shifts)):
+            shiftName = self.shifts[i]
+            isActive = self.shiftVariables[i].get()
+            isActive = 1 if isActive == True else 0
+            self.cursor.execute('UPDATE shifts SET isActive = "' + str(isActive) + '" WHERE shiftName = "' + shiftName + '"')
+        pass
 
 #------------------------------------------------------------------------------------------------------
 #Worker requests
@@ -352,17 +364,41 @@ Beosztás:
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
                 self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                if self.cursor.fetchone()[0] > 0:
+                if self.cursor.fetchone()[0] > 0: #only if requested
                     variable = tk.BooleanVar()
                     checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
                     checkbutton.grid(row=2+i, column=1+j)
                     self.requestCheckbuttons[j].append(checkbutton)
                     self.requestVariables[j].append(variable)
+                else:
+                    variable = tk.BooleanVar()
+                    checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
+                    checkbutton.grid(row=2+i, column=1+j)
+                    checkbutton['state'] = 'disabled'
+                    self.requestCheckbuttons[j].append(checkbutton)
+                    self.requestVariables[j].append(variable)
+        #print(self.requestVariables)
 
     def optionMenuSelectionEvent(self, event):
         for daysCheckbuttons in self.requestCheckbuttons:
             for checkbutton in daysCheckbuttons:
                 checkbutton.deselect()
+        year = self.year.get()
+        week = self.week.get()
+        workerName = self.workerName.get()
+        self.cursor.execute('SELECT workerId FROM workers WHERE workerName = ?', (workerName,))
+        workerId = self.cursor.fetchone()[0]
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerIds = [row[0] for row in self.cursor.fetchall()]
+                if workerId in workerIds:
+                    self.requestCheckbuttons[j][i].select()
 
     def getWorkerRequest(self):
         workerName = self.workerName.get()
@@ -383,10 +419,21 @@ Beosztás:
         workerId = self.cursor.fetchone()[0]
         #print('Name:', workerName, 'id:', workerId)
         for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
             for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 if self.workerRequestGrid[i][j] == 1:
                     self.cursor.execute('INSERT OR IGNORE INTO workerRequests_' + str(year) + '_' + str(week) +
                                         ' (workerId, dayId, shiftId) VALUES (?, ?, ?)', (workerId, j, i))
+                else:
+                    try:
+                        self.cursor.execute('DELETE FROM workerRequests_' + str(year) + '_' + str(week) +
+                                            ' WHERE workerId = ' + str(workerId) + ' AND dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    except:
+                        pass
         self.connection.commit()
 
 
@@ -456,7 +503,7 @@ Beosztás:
     def showWorkerRequests(self):
         year = self.year.get()
         week = self.week.get()
-        row = 3
+        row = 1 #same as gridRow
         requests = self.loadWorkerRequestsListToShow()
         try:
             self.scheduleFrame.destroy()
@@ -465,8 +512,9 @@ Beosztás:
         self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
         self.scheduleFrame.grid(row=2, column=0, sticky='W')
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
+        tk.Label(self.scheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
         for j in range(0, len(self.days)):
-            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=2, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
+            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
         for i in range(0, len(self.shifts)):
             tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
             row = row + requests[i]
@@ -474,7 +522,7 @@ Beosztás:
             self.scheduleByHandCheckbuttons.append([])
             self.scheduleByHandVariables.append([])
             self.scheduleByHandNameLabels.append([])
-            gridRow = 3
+            gridRow = 1 #same as row
             gridRow_ = gridRow
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -559,14 +607,17 @@ Beosztás:
             self.showScheduleWindow = tk.Toplevel()
             self.showScheduleFrame = tk.Frame(self.showScheduleWindow, borderwidth=2, relief='ridge')
             self.showScheduleFrame.grid(row=3, column=0, sticky='W')
-            requests, row = [4, 1, 4], 4 #row: starting row is the one under the buttons
+            requests, row = [4, 1, 4], 1 #row: starting row is the one under the buttons
+            year = self.year.get()
+            week = self.week.get()
+            tk.Label(self.showScheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
             for j in range(0, len(self.days)):
-                tk.Label(self.showScheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=3, column=1+j)
+                tk.Label(self.showScheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+j)
             for i in range(0, len(self.shifts)):
                 tk.Label(self.showScheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
                 row = row + requests[i]
             for j in range(0, len(self.days)):
-                row_ = 4
+                row_ = 1
                 row = row_
                 for i in range(0, len(self.shifts)):
                     for k in range(0, requests[i]):
