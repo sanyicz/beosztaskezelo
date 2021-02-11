@@ -485,8 +485,6 @@ Kilépés:
         else:
             self.scheduleWindow = tk.Toplevel()
             #self.scheduleWindow.grab_set()
-            self.scheduleWindow.bind('<Enter>', self.highlightOn)
-            self.scheduleWindow.bind('<Leave>', self.highlightOff)
             tk.Label(self.scheduleWindow, text='Beosztás kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
 
             self.miscFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
@@ -537,6 +535,8 @@ Kilépés:
             pass
         self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
         self.scheduleFrame.grid(row=2, column=0, sticky='W')
+        self.scheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.scheduleFrame))
+        self.scheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.scheduleFrame))
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
         tk.Label(self.scheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
         for j in range(0, len(self.days)):
@@ -633,6 +633,10 @@ Kilépés:
             self.showScheduleWindow = tk.Toplevel()
             self.showScheduleFrame = tk.Frame(self.showScheduleWindow, borderwidth=2, relief='ridge')
             self.showScheduleFrame.grid(row=3, column=0, sticky='W')
+            
+            self.showScheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.showScheduleFrame))
+            self.showScheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.showScheduleFrame))
+            
             requests, row = [4, 1, 4], 1 #row: starting row is the one under the buttons
             year = self.year.get()
             week = self.week.get()
@@ -746,12 +750,11 @@ Kilépés:
                         if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
                             self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'normal'
 
-    def highlightOn(self, event):
+    def highlightOn(self, event, frame):
         #when the mouse hovers over a name, highlights all of his/her requests for the week in red
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            frame = self.scheduleFrame
             widgetList = frame.winfo_children()
             highlightList = []
             for widget in widgetList:
@@ -764,12 +767,11 @@ Kilépés:
         except:
             pass
 
-    def highlightOff(self, event):
+    def highlightOff(self, event, frame):
         #disables the above defined highlighting
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            frame = self.scheduleFrame
             widgetList = frame.winfo_children()
             highlightList = []
             for widget in widgetList:
