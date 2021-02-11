@@ -70,31 +70,36 @@ class SHScheduler(tk.Frame): #class inheritance
         self.helpWindow = tk.Toplevel()
         self.helpWindow.title('Súgó')
         tk.Label(self.helpWindow, text='Súgó', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
-        helpText = """Év, hét:
-    Meg kell adni, hogy a készítendő beosztás melyik héthez tartozik.
-Diákok:
+        helpText = """Dolgozók kezelése:
     Névválasztó menü: a már az adatbázisban lévő diákok közül lehet választani.
-    Új diák felvétele: nevet beírni a Név mezőbe, majd Új diák felvétele.
-    Diák törlése: a beírt/kiválaszott nevet törli az adatbázisból.
-    Diákok listája: a jobb oldali szövegmezőbe kiírja az adatbázisban lévő diákok listáját.
-Kérések:
+    Dolgozó felvétele: nevet beírni a Név mezőbe, majd Új dolgozó felvétele.
+    Dolgozó törlése: a kiválaszott dolgozót törli az adatbázisból.
+    Adatok mentése: az adott dolgozóhoz menti a beírt adatokat.
+Munkarend kezelése:
+    Műszakok kezelése: megadható, mely műszakok aktívak.
     A táblázatban megadható, hogy melyik nap melyik műszakjába hány embert kértek.
-    A Mentés gombbal minden hétre rögzíteni kell a kéréseket, mivel a kiírt értékek alapértelmezések, nem mentett értékek.
-Ráérések:
-    A név kiválasztásával a táblázatban kipipálható, hogy az adott diák melyik nap melyik műszakjaiban ér rá.
-    Ráérést lead: elmenti az adatbázisba diák megadott ráéréseit az adott hétre.
-    Diák ráérése: kiírja az adott nevű diák adott heti ráérését.
-Beosztás:
-    Beosztást készít: beosztást készít az adott hétre megadott ráérésekből, a beállított algoritmus szerint.
+    A Mentés gombbal rögzíteni kell a kéréseket. Nincs heti táblázat erre.
+Ráérések kezelése:
+    Ki kell választani a dolgozó nevét. A táblázatban kipipálható, hogy mely műszakokban ér rá.
+    Ráérést lead: elmenti a kiválasztott dolgozó megadott ráéréseit az adott hétre.
+Beosztás kezelése:
+    Ráérések kiírása: az adott heti ráéréseket jeleníti meg táblázatosan.
+    Beosztás készítése: a táblázatban kipipált dolgozókkal elmenti az adott heti beosztást.
+    Beosztás kiegészítése: a táblázatban kipipált dolgozókkal készített beosztást automatikusan kiegészíti,
+    a beállított algoritmus szerint.
     Algoritmus: a beosztáskészítő által használt algoritmus kiválasztása.
-    Export xls-be: excel táblázatba menti a kiválasztott heti beosztást.
-    Export txt-be: szövegfájlba menti az adott heti beosztást névsor szerint.
-    Kilépés: menti az adatbázist és kilép.
+    Beosztás kiírása: az adott hétre már az adatbázisba elmentett beosztást jeleníti meg új ablakban.
+    Export xlsx-be: excel táblázatba menti a kiválasztott heti beosztást.
+    Beosztás törlése: törli az adott heti beosztást az adatbázisból.
+Súgó:
+    Megnyitja ezt a súgót.
+Kilépés:
+    Menti az adatbázist és kilép.
 """
         tk.Label(self.helpWindow, text=helpText, justify='left').grid(row=1, column=0)
 
     def quit(self):
-        self.connection.commit()
+        self.saveDatabase()
         self.connection.close()
         self.mainWindow.destroy()
 
@@ -137,8 +142,9 @@ Beosztás:
         self.membershipValidityVariable = tk.StringVar()
         tk.Entry(self.workerDataFrame, textvariable=self.membershipValidityVariable).grid(row=5, column=1)
         tk.Label(self.workerDataFrame, text='Aktív').grid(row=6, column=0)
-        self.isActive = tk.BooleanVar()
-        tk.Checkbutton(self.workerDataFrame, variable=self.isActive).grid(row=6, column=1)
+        self.isActiveVariable = tk.BooleanVar()
+        self.isActiveCheckbutton = tk.Checkbutton(self.workerDataFrame, variable=self.isActiveVariable)
+        self.isActiveCheckbutton.grid(row=6, column=1)
 
     def nameMenuSelectionEvent(self, event):
         #not works after adding or deleting a worker
@@ -149,13 +155,19 @@ Beosztás:
         self.phoneNumberVariable.set( self.cursor.fetchone()[0] )
         self.cursor.execute('SELECT membershipValidity FROM workers WHERE workerName = ?', (workerName, ))
         self.membershipValidityVariable.set( self.cursor.fetchone()[0] )
+        self.cursor.execute('SELECT isActive FROM workers WHERE workerName = ?', (workerName, ))
+        #self.isActiveVariable.set( True if self.cursor.fetchone()[0] == 1 else False )
+        if self.cursor.fetchone()[0] == 1:
+            self.isActiveCheckbutton.select()
+        else:
+            self.isActiveCheckbutton.deselect()
         
     def updateNameOptionMenu(self, optionMenu, optionMenuVariable):
         menu = optionMenu['menu']
         menu.delete(0, 'end')
         for workerName in self.workerNames:
             menu.add_command(label=workerName, command=lambda value=workerName: optionMenuVariable.set(value))
-        #how to make self.nameMenuSelectionEvent work again?
+        #how to make self.nameMenuSelectionEvent work again?????????????????
             
     def addWorker(self):
         workerName = self.workerName.get()
@@ -185,16 +197,14 @@ Beosztás:
         dateOfBirth = self.dateOfBirthVariable.get()
         phoneNumber = self.phoneNumberVariable.get()
         membershipValidity = self.membershipValidityVariable.get()
-        isActive = self.isActive.get()
-        #print(workerName, dateOfBirth)
-        #print('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
+        isActive = self.isActiveVariable.get()
         try:
             self.cursor.execute('INSERT INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive) VALUES (?, ?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive))
         except:
             self.cursor.execute('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
             self.cursor.execute('UPDATE workers SET phoneNumber = "' + phoneNumber + '" WHERE workerName = "' + workerName + '"')
             self.cursor.execute('UPDATE workers SET membershipValidity = "' + membershipValidity + '" WHERE workerName = "' + workerName + '"')
-            self.cursor.execute('UPDATE workers SET isActive = "' + str(isActive) + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET isActive = "' + str(int(isActive)) + '" WHERE workerName = "' + workerName + '"')
         self.saveDatabase()
 
 
@@ -214,6 +224,7 @@ Beosztás:
         tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
         tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
         tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
+        tk.Button(self.miscFrame, text='Kérések kiírása', command=self.showCompanyRequests).grid(row=0, column=4)
         tk.Button(self.miscFrame, text='Műszakok kezelése', command=self.shiftManager).grid(row=1, column=0, columnspan=2)
         tk.Button(self.miscFrame, text='Ráérések kezelése', command=self.workerRequestManager).grid(row=2, column=0, columnspan=2)
 
@@ -237,6 +248,9 @@ Beosztás:
                 self.companyRequestEntries[j].append(entry)
                 self.companyRequestVariables[j].append(variable)
         self.loadCompanyRequest() #load the previously saved company request (cannot store weekly request, only one table)
+
+    def showCompanyRequests(self):
+        pass
 
     def loadCompanyRequest(self):
         for j in range(0, len(self.days)):
@@ -293,7 +307,7 @@ Beosztás:
         tk.Label(self.shiftManagerWindow, text='Műszakok kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         self.miscFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
         self.miscFrame.grid(row=1, column=0, sticky='W')
-        tk.Button(self.miscFrame, text='Új műszak', command=self.addShift).grid(row=0, column=0)
+        tk.Button(self.miscFrame, text='Új műszak', command=self.addShiftManager).grid(row=0, column=0)
         tk.Button(self.miscFrame, text='Műszakok mentése', command=self.saveShifts).grid(row=0, column=1)
         self.shiftsFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
         self.shiftsFrame.grid(row=2, column=0, sticky='W')
@@ -310,11 +324,23 @@ Beosztás:
             self.shiftCheckbuttons.append(checkbutton)
             self.shiftVariables.append(variable)
         
-    def addShift(self):
+    def addShiftManager(self):
         #gui for adding new shifts
         self.addShiftWindow = tk.Toplevel()
         self.addShiftWindow.grab_set()
         self.addShiftWindow.title('Új műszak')
+        tk.Label(self.addShiftWindow, text='Új műszak felvétele', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
+        self.addShiftFrame = tk.Frame(self.addShiftWindow, borderwidth=2, relief='ridge')
+        self.addShiftFrame.grid(row=1, column=0, sticky='W')
+        tk.Label(self.addShiftFrame, text='Műszak neve').grid(row=0, column=0)
+        self.newShiftName = tk.StringVar()
+        tk.Entry(self.addShiftFrame, textvariable=self.newShiftName).grid(row=0, column=1)
+        tk.Button(self.addShiftFrame, text='Műszak felvétele', command=self.addNewShift).grid(row=1, column=0)
+        
+    def addNewShift(self):
+        newShiftName = self.newShiftName.get()
+        self.cursor.execute('INSERT INTO shifts (shiftName, isActive) VALUES (?, ?)', (newShiftName, 1, ))
+        self.saveDatabase()
 
     def saveShifts(self):
         for i in range(0, len(self.shifts)):
@@ -322,7 +348,7 @@ Beosztás:
             isActive = self.shiftVariables[i].get()
             isActive = 1 if isActive == True else 0
             self.cursor.execute('UPDATE shifts SET isActive = "' + str(isActive) + '" WHERE shiftName = "' + shiftName + '"')
-        pass
+        self.saveDatabase()
 
 #------------------------------------------------------------------------------------------------------
 #Worker requests
@@ -497,7 +523,7 @@ Beosztás:
                 workerIds = self.cursor.fetchall()
                 if len(workerIds) >= requests[i]:
                     requests[i] = len(workerIds)
-        print(requests)
+        #print(requests)
         return requests
 
     def showWorkerRequests(self):
@@ -725,7 +751,8 @@ Beosztás:
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            widgetList = self.scheduleFrame.winfo_children()
+            frame = self.scheduleFrame
+            widgetList = frame.winfo_children()
             highlightList = []
             for widget in widgetList:
                if isinstance(widget, tkinter.Label):
@@ -742,7 +769,8 @@ Beosztás:
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
-            widgetList = self.scheduleFrame.winfo_children()
+            frame = self.scheduleFrame
+            widgetList = frame.winfo_children()
             highlightList = []
             for widget in widgetList:
                if isinstance(widget, tkinter.Label):
