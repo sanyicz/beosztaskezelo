@@ -563,10 +563,6 @@ Kilépés:
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 workerIds = self.cursor.fetchall()
                 for k in range(0, requests[i]):
-##                    workerId = workerIds[k][0]
-##                    self.cursor.execute( 'SELECT * FROM schedule_' + str(year) + '_' + str(week) +
-##                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) + ' AND workerId = ' + str(workerId) )
-##                    print(self.cursor.fetchall())
                     try:
                         workerId = workerIds[k][0]
                         self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
@@ -578,7 +574,7 @@ Kilépés:
                         checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
                         checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
                         self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
-                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous work)
+                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous run of the program)
                         if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]: #if a worker is scheduled, check the box
                             checkbutton.select()
                         self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
@@ -734,22 +730,66 @@ Kilépés:
     def disableWorkerSelection(self, column, row, row_k, nameToDisable):
         #if someone is scheduled to work in a shfit, he/she can't work on the given day
         #the possibility to check him/her into another shift is disabled
-##        print(column, row)
-        if self.scheduleByHandVariables[column][row][row_k][0].get():
+        if self.scheduleByHandVariables[column][row][row_k][0].get() == True:
             for i in range(0, len(self.shifts)):
                 if i != row:
                     for k in range(0, len(self.scheduleByHandNameLabels[column][i])):
-##                        print(self.scheduleByHandNameLabels[column][i][k]['text'])
                         if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
                             self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'disabled'
         else:
             for i in range(0, len(self.shifts)):
                 if i != row:
                     for k in range(0, len(self.scheduleByHandNameLabels[column][i])):
-##                        print(self.scheduleByHandNameLabels[column][i][k]['text'])
                         if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
                             self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'normal'
 
+        self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[column], ))
+        dayId = self.cursor.fetchone()[0]
+        self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[row], ))
+        shiftId = self.cursor.fetchone()[0]
+        self.disableWorkerSelectionForShift(dayId, shiftId, column, row)
+        
+
+    def disableWorkerSelectionForShift(self, dayId, shiftId, column, row):
+        year = self.year.get()
+        week = self.week.get()
+        requests = self.loadWorkerRequestsListToShow() #gives the max number of requests for shifts
+        workersScheduled = []
+        workerNumberScheduled = 0
+        print('requests: ', requests)
+        print('dayId, shiftId, column, row: ', dayId, shiftId, column, row)
+        for k in range(0, requests[row]):
+            print(k)
+            #try-except is not the most elegant solution
+            #it is for overcoming that requests list contains the max number of requests for shifts (for example [8, 1, 5])
+            #and the real requests for a given day can be fewer (for example [6, 1, 4])
+            #so the index k may result in out of range error
+            #and company requests is [4, 1, 4]
+            try:
+                if self.scheduleByHandVariables[column][row][k][0].get() == True:
+                    workerNumberScheduled += 1
+                    workersScheduled.append(self.scheduleByHandNameLabels[column][row][k]['text'])
+            except:
+                pass
+        self.cursor.execute( 'SELECT workerNumber FROM companyRequest' +
+                            ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+        workerNumber = self.cursor.fetchone()[0]
+        #print(workerNumberScheduled, workerNumber)
+        if workerNumberScheduled == workerNumber:
+            try:
+                for k in range(0, requests[row]):
+                    if self.scheduleByHandNameLabels[column][row][k]['text'] not in workersScheduled:
+                        self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'disabled'
+            except:
+                pass
+        else:
+            try:
+                for k in range(0, requests[row]):
+                    if self.scheduleByHandNameLabels[column][row][k]['text'] not in workersScheduled:
+                        self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'normal'
+            except:
+                pass
+            
     def highlightOn(self, event, frame):
         #when the mouse hovers over a name, highlights all of his/her requests for the week in red
         try:
