@@ -224,7 +224,7 @@ Kilépés:
         tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
         tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
         tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-        tk.Button(self.miscFrame, text='Kérések kiírása', command=self.showCompanyRequests).grid(row=0, column=4)
+        tk.Button(self.miscFrame, text='Kérések kiírása', command=self.loadAndShowCompanyRequest).grid(row=0, column=4)
         tk.Button(self.miscFrame, text='Műszakok kezelése', command=self.shiftManager).grid(row=1, column=0, columnspan=2)
         tk.Button(self.miscFrame, text='Ráérések kezelése', command=self.workerRequestManager).grid(row=2, column=0, columnspan=2)
 
@@ -247,12 +247,29 @@ Kilépés:
                 entry.grid(row=3+i, column=1+j)
                 self.companyRequestEntries[j].append(entry)
                 self.companyRequestVariables[j].append(variable)
-        self.loadCompanyRequest() #load the previously saved company request (cannot store weekly request, only one table)
+        self.loadAndShowCompanyRequest() #load the previously saved company request (cannot store weekly request, only one table)
 
-    def showCompanyRequests(self):
-        pass
+    def createCompanyRequest(self):
+        year = self.year.get()
+        week = self.week.get()
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest_' + str(year) + '_' + str(week) + ' AS SELECT * FROM companyRequest WHERE 0')
+        for j in range(0, len(self.days)):
+            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+            dayId = self.cursor.fetchone()[0]
+            for i in range(0, len(self.shifts)):
+                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                shiftId = self.cursor.fetchone()[0]
+                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                workerNumber = self.cursor.fetchone()[0]
+                self.cursor.execute('INSERT OR IGNORE INTO companyRequest_' + str(year) + '_' + str(week) +
+                                    ' (dayID, shiftId, workerNumber) VALUES (?, ?, ?)',
+                                    (dayId, shiftId, workerNumber) ) #cast a numpy value to int: value.item()
+        self.saveDatabase()
 
-    def loadCompanyRequest(self):
+    def loadAndShowCompanyRequest(self):
+        self.createCompanyRequest()
+        year = self.year.get()
+        week = self.week.get()
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -262,9 +279,13 @@ Kilépés:
                 if isActive == 1:
                     self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                     shiftId = self.cursor.fetchone()[0]
-                    self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = '
-                                        + str(dayId) + ' AND shiftId = ' + str(shiftId))
-                    workerNumber = self.cursor.fetchone()[0]
+                    try:
+                        self.cursor.execute('SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) +
+                                            ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
+                        workerNumber = self.cursor.fetchone()[0]
+                    except:
+                        self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
+                        workerNumber = self.cursor.fetchone()[0]
                     self.companyRequestVariables[j][i].set(workerNumber)
 
     def getCompanyRequest(self):
@@ -278,9 +299,8 @@ Kilépés:
         self.getCompanyRequest()
         year = self.year.get()
         week = self.week.get()
-        #self.cursor.execute('DROP TABLE IF EXISTS companyRequest')
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest (dayId INTEGER, shiftId INTEGER, workerNumber INTEGER, ' + 
-                            ' UNIQUE(dayId, shiftId), UNIQUE(dayId, shiftId, workerNumber))')
+##        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest (dayId INTEGER, shiftId INTEGER, workerNumber INTEGER, ' + 
+##                            ' UNIQUE(dayId, shiftId), UNIQUE(dayId, shiftId, workerNumber))')
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -289,10 +309,11 @@ Kilépés:
                 shiftId = self.cursor.fetchone()[0]
 ##                self.cursor.execute('INSERT OR IGNORE INTO companyRequest (dayID, shiftId, workerNumber) VALUES (?, ?, ?)',
 ##                                    (dayId, shiftId, int(self.companyRequestGrid[i][j])) ) #cast a numpy value to int: value.item()
-                self.cursor.execute('UPDATE companyRequest SET workerNumber = ' + str(int(self.companyRequestGrid[i][j])) +
+                self.cursor.execute('UPDATE companyRequest_' + str(year) + '_' + str(week) + 
+                                    ' SET workerNumber = ' + str(int(self.companyRequestGrid[i][j])) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 #update és insert egyszerre: ha a meglévő érték nem azonos a beírttal, frissíteni kell
-        self.connection.commit()
+        self.saveDatabase()
 
 
 #------------------------------------------------------------------------------------------------------
@@ -870,9 +891,9 @@ Kilépés:
         year = self.year.get()
         week = self.week.get()
         self.createSchedule()
-        
         self.cursor.execute('DROP TABLE IF EXISTS companyRequestModified')
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest WHERE 0')
+##        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest WHERE 0')
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest_' + str(year) + '_' + str(week) + ' WHERE 0')
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -882,7 +903,8 @@ Kilépés:
                 self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 partialScheduledWorkers = self.cursor.fetchall()
-                self.cursor.execute('SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                self.cursor.execute('SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) +
+                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 workerNeeded = self.cursor.fetchone()[0]
                 if workerNeeded > len(partialScheduledWorkers):
                     workerNeeded -= len(partialScheduledWorkers)
