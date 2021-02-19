@@ -62,9 +62,15 @@ class SHScheduler(tk.Frame): #class inheritance
         #return the list of workers sorted by name
         self.cursor.execute('SELECT workerName FROM workers')
         self.workerNames = []
-        for row in self.cursor.fetchall():
-            self.workerNames.append(row[0])
+        workerNamesFetchall = self.cursor.fetchall()
+        #print(workerNamesFetchall)
+        if workerNamesFetchall != []:
+            for row in workerNamesFetchall:
+                self.workerNames.append(row[0])
+        else:
+            self.workerNames.append('')
         self.workerNames.sort()
+        #print(self.workerNames)
 
     def help(self):
         self.helpWindow = tk.Toplevel()
@@ -126,7 +132,7 @@ Kilépés:
         self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=0, column=1)
-        self.nameEntry = tk.Entry(self.workerDataFrame, textvariable=self.workerName, width=18)
+        self.nameEntry = tk.Entry(self.workerDataFrame, textvariable=self.workerName, width=20)
         self.nameEntry.grid(row=1, column=1)
         tk.Button(self.workerDataFrame, text='Dolgozó felvétele', command=self.addWorker).grid(row=1, column=2)
         tk.Button(self.workerDataFrame, text='Dolgozó törlése', command=self.deleteWorker).grid(row=1, column=3)
@@ -171,14 +177,15 @@ Kilépés:
             
     def addWorker(self):
         workerName = self.workerName.get()
-        self.saveWorkerData()
-        self.listWorkers()
-        self.nameOptions.destroy()
-        self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
-        self.nameOptions.configure(width=18)
-        self.nameOptions.grid(row=0, column=1)
-        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
-        print(workerName + ' hozzáadva')
+        if workerName != '':
+            self.saveWorkerData()
+            self.listWorkers()
+            self.nameOptions.destroy()
+            self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
+            self.nameOptions.configure(width=18)
+            self.nameOptions.grid(row=0, column=1)
+            #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
+            print(workerName + ' hozzáadva')
 
     def deleteWorker(self):
         workerName = self.workerName.get()
@@ -397,6 +404,11 @@ Kilépés:
         
         self.workerRequestFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
         self.workerRequestFrame.grid(row=2, column=0, sticky='W')
+        self.showWorkerRequestGrid()
+
+    def showWorkerRequestGrid(self):
+        year = self.year.get()
+        week = self.week.get()
         for j in range(0, len(self.days)):
             tk.Label(self.workerRequestFrame, text=self.days[j], width=8).grid(row=1, column=1+j)
         for i in range(0, len(self.shifts)):
@@ -410,7 +422,8 @@ Kilépés:
             for i in range(0, len(self.shifts)):
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                self.cursor.execute( 'SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) +
+                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                 if self.cursor.fetchone()[0] > 0: #only if requested
                     variable = tk.BooleanVar()
                     checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
@@ -441,11 +454,14 @@ Kilépés:
             for i in range(0, len(self.shifts)):
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerIds = [row[0] for row in self.cursor.fetchall()]
-                if workerId in workerIds:
-                    self.requestCheckbuttons[j][i].select()
+                try:
+                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workerIds = [row[0] for row in self.cursor.fetchall()]
+                    if workerId in workerIds:
+                        self.requestCheckbuttons[j][i].select()
+                except:
+                    pass
 
     def getWorkerRequest(self):
         workerName = self.workerName.get()
@@ -481,7 +497,7 @@ Kilépés:
                                             ' WHERE workerId = ' + str(workerId) + ' AND dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                     except:
                         pass
-        self.connection.commit()
+        self.saveDatabase()
 
 
 #------------------------------------------------------------------------------------------------------
@@ -594,10 +610,13 @@ Kilépés:
                         variable = tk.BooleanVar()
                         checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
                         checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
-                        self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
-                                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous run of the program)
-                        if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]: #if a worker is scheduled, check the box
-                            checkbutton.select()
+                        try:
+                            self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
+                                                 ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous run of the program)
+                            if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]: #if a worker is scheduled, check the box
+                                checkbutton.select()
+                        except:
+                            pass
                         self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
                         self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
                     except:
@@ -751,6 +770,7 @@ Kilépés:
     def disableWorkerSelection(self, column, row, row_k, nameToDisable):
         #if someone is scheduled to work in a shfit, he/she can't work on the given day
         #the possibility to check him/her into another shift is disabled
+        #print(column, row, row_k, nameToDisable, self.scheduleByHandVariables[column][row], sep=', ') #why empty?
         if self.scheduleByHandVariables[column][row][row_k][0].get() == True:
             for i in range(0, len(self.shifts)):
                 if i != row:
@@ -770,17 +790,17 @@ Kilépés:
         shiftId = self.cursor.fetchone()[0]
         self.disableWorkerSelectionForShift(dayId, shiftId, column, row)
         
-
     def disableWorkerSelectionForShift(self, dayId, shiftId, column, row):
         year = self.year.get()
         week = self.week.get()
         requests = self.loadWorkerRequestsListToShow() #gives the max number of requests for shifts
-        workersScheduled = []
+        workersScheduledForShift = []
         workerNumberScheduled = 0
-        print('requests: ', requests)
-        print('dayId, shiftId, column, row: ', dayId, shiftId, column, row)
+        workersScheduledForDay = []
+        #print('requests: ', requests)
+        #print('dayId, shiftId, column, row: ', dayId, shiftId, column, row)
         for k in range(0, requests[row]):
-            print(k)
+            #print(k)
             #try-except is not the most elegant solution
             #it is for overcoming that requests list contains the max number of requests for shifts (for example [8, 1, 5])
             #and the real requests for a given day can be fewer (for example [6, 1, 4])
@@ -789,24 +809,37 @@ Kilépés:
             try:
                 if self.scheduleByHandVariables[column][row][k][0].get() == True:
                     workerNumberScheduled += 1
-                    workersScheduled.append(self.scheduleByHandNameLabels[column][row][k]['text'])
+                    workersScheduledForShift.append(self.scheduleByHandNameLabels[column][row][k]['text'])
             except:
                 pass
-        self.cursor.execute( 'SELECT workerNumber FROM companyRequest' +
+        #print('workersScheduledForShift: ', workersScheduledForShift)
+
+        for row_ in range(0, len(requests)):
+            for k in range(0, requests[row_]):
+                try:
+                    if self.scheduleByHandVariables[column][row_][k][0].get() == True:
+                        workersScheduledForDay.append(self.scheduleByHandNameLabels[column][row_][k]['text'])
+                except:
+                    pass
+        #print('workersScheduledForDay: ', workersScheduledForDay)
+
+        self.cursor.execute( 'SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) + 
                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
         workerNumber = self.cursor.fetchone()[0]
         #print(workerNumberScheduled, workerNumber)
         if workerNumberScheduled == workerNumber:
             try:
                 for k in range(0, requests[row]):
-                    if self.scheduleByHandNameLabels[column][row][k]['text'] not in workersScheduled:
+                    name = self.scheduleByHandNameLabels[column][row][k]['text']
+                    if name not in workersScheduledForShift and name not in workersScheduledForDay:
                         self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'disabled'
             except:
                 pass
         else:
             try:
                 for k in range(0, requests[row]):
-                    if self.scheduleByHandNameLabels[column][row][k]['text'] not in workersScheduled:
+                    name = self.scheduleByHandNameLabels[column][row][k]['text']
+                    if name not in workersScheduledForShift and name not in workersScheduledForDay:
                         self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'normal'
             except:
                 pass
