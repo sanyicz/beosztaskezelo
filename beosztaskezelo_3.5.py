@@ -8,6 +8,7 @@ import datetime
 
 
 class SHScheduler(tk.Frame): #class inheritance
+    '''a program to handle a company's weekle work schedule, the worker's data, etc.'''
     def __init__(self, parentWindow):
         '''
         creates the main window with the main functions
@@ -629,7 +630,7 @@ Kilépés:
             tk.Button(self.miscFrame, text='Beosztás törlése', command=self.deleteSchedule).grid(row=3, column=0, columnspan=2)
             self.showWorkerRequests()
 
-    def loadWorkerRequestsListToShow(self):
+    def loadRequestsListToShow(self, table):
         '''
         loads worker max number of request for shifts for the week into a list
         '''
@@ -642,12 +643,19 @@ Kilépés:
             for i in range(0, len(self.shifts)):
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                    ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerIds = self.cursor.fetchall()
-                if len(workerIds) >= requests[i]:
-                    requests[i] = len(workerIds)
-        #print(requests)
+                if table == 'workerRequests':
+                    self.cursor.execute('SELECT workerId FROM ' + table + '_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workerIds = self.cursor.fetchall()
+                    if len(workerIds) >= requests[i]:
+                        requests[i] = len(workerIds)
+                elif table == 'companyRequest':
+                    self.cursor.execute('SELECT workerNumber FROM ' + table + '_' + str(year) + '_' + str(week) +
+                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                    workerNumber = self.cursor.fetchone()[0]
+                    if workerNumber >= requests[i]:
+                        requests[i] = workerNumber
+        #print(table, requests)
         return requests
 
     def showWorkerRequests(self):
@@ -658,9 +666,9 @@ Kilépés:
         year = self.year.get()
         week = self.week.get()
         row = 1 #same as gridRow
-        requests = self.loadWorkerRequestsListToShow()
+        requests = self.loadRequestsListToShow('workerRequests')
         try:
-            self.scheduleFrame.destroy()
+            self.scheduleFrame.destroy() #if exists
         except:
             pass
         self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
@@ -679,7 +687,7 @@ Kilépés:
             self.scheduleByHandVariables.append([])
             self.scheduleByHandNameLabels.append([])
             gridRow = 1 #same as row
-            gridRow_ = gridRow
+            gridRow_ = gridRow #to track the last empty row
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
             for i in range(0, len(self.shifts)):
@@ -762,7 +770,6 @@ Kilépés:
         loads the schedule for the given week
         and shows it in a seperate window
         '''
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!fix requests = [4, 1, 4]
         try:
             self.loadSchedule()
             self.showScheduleWindow = tk.Toplevel()
@@ -772,7 +779,10 @@ Kilépés:
             self.showScheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.showScheduleFrame))
             self.showScheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.showScheduleFrame))
             
-            requests, row = [4, 1, 4], 1 #row: starting row is the one under the buttons
+            #requests = [4, 1, 4]
+            requests = self.loadRequestsListToShow('companyRequest')
+            #print(requests)
+            row = 1 #starting row is the one under the buttons
             year = self.year.get()
             week = self.week.get()
             tk.Label(self.showScheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
@@ -814,8 +824,9 @@ Kilépés:
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         worksheet.title = 'schedule_' + str(year) + '_' + str(week)
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!fix requests = [4, 1, 4]
-        requests, row = [4, 1, 4], 2
+        #requests = [4, 1, 4]
+        requests = self.loadRequestsListToShow('companyRequest')
+        row = 2
         for j in range(0, len(self.days)):
             worksheet.cell(row=1, column=2+j).value = self.days[j]
             worksheet.cell(row=1, column=2+j).font = openpyxl.styles.Font(bold=True)
@@ -840,7 +851,8 @@ Kilépés:
         #backup
         worksheet = workbook.create_sheet()
         worksheet.title = 'backup_' + str(year) + '_' + str(week)
-        requests, row = [4, 1, 4], 2
+        #requests = [4, 1, 4]
+        row = 2
         for j in range(0, len(self.days)):
             worksheet.cell(row=1, column=2+j).value = self.days[j]
             worksheet.cell(row=1, column=2+j).font = openpyxl.styles.Font(bold=True)
@@ -905,7 +917,7 @@ Kilépés:
         '''
         year = self.year.get()
         week = self.week.get()
-        requests = self.loadWorkerRequestsListToShow() #gives the max number of requests for shifts
+        requests = self.loadRequestsListToShow('workerRequests') #gives the max number of requests for shifts
         workersScheduledForShift = []
         workerNumberScheduled = 0
         workersScheduledForDay = []
@@ -1021,6 +1033,7 @@ Kilépés:
                         row = id_[0], dayId, shiftId
                         self.cursor.execute('INSERT OR IGNORE INTO backup_' + str(year) + '_' + str(week) +
                                             ' (workerId, dayId, shiftId) VALUES (?, ?, ?)', row)
+        print('Backup created')
 
     def createSchedule(self):
         '''
@@ -1042,6 +1055,7 @@ Kilépés:
                                             '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (row[1], day, shift) )
         self.createBackup()
         self.saveDatabase()
+        print('Schedule created')
 
 
     def fillCreatedSchedule(self):
@@ -1114,6 +1128,7 @@ Kilépés:
         self.createBackup()
         self.getNumberOfScheduledDays()
         self.saveDatabase()
+        print('Schedule created and filled')
 
     def getNumberOfRequestedDays(self):
         '''
@@ -1194,10 +1209,9 @@ Kilépés:
                     pass
 
         
-        
-
 if __name__ == '__main__':
     root = tk.Tk()
     SH = SHScheduler(root)
     SH.grid(row=0, column=0)
+    #print('class __doc__:', SH.__doc__)
     root.mainloop()
