@@ -9,6 +9,9 @@ import datetime
 
 class SHScheduler(tk.Frame): #class inheritance
     def __init__(self, parentWindow):
+        '''
+        creates the main window with the main functions
+        '''
         tk.Frame.__init__(self, parentWindow) #?
         self.mainWindow = parentWindow #?
         #self.mainWindow.geometry('300x200')
@@ -33,7 +36,10 @@ class SHScheduler(tk.Frame): #class inheritance
         tk.Button(self.mainWindow, text='Kilépés', width=16, command=self.quit).grid(row=6, column=0)
 
     def loadDatabase(self, dataBaseFilename=''):
-        #load the database
+        '''
+        loads the database of the given name
+        the open file dialog is not working
+        '''
         if dataBaseFilename == '':
             self.dataBaseFilename = tk.filedialog.askopenfilename(title='Adatbázis betöltése')
         else:
@@ -43,23 +49,33 @@ class SHScheduler(tk.Frame): #class inheritance
         print('Database: "' + self.dataBaseFilename + '" loaded')
 
     def listDays(self):
+        '''
+        lists the days from the database
+        '''
         self.cursor.execute('SELECT dayName FROM days')
         arrayDays = self.cursor.fetchall()
         self.days = []
         for i in range(0, len(arrayDays)):
             self.days.append(arrayDays[i][0])
+        print('Days listed')
 
     def listShifts(self):
+        '''
+        lists the shifts from the database
+        '''
         self.cursor.execute('SELECT shiftName FROM shifts ORDER BY shiftId')
-##        self.cursor.execute('SELECT shiftName FROM shifts WHERE isActive = 1 ORDER BY shiftId')
+        #isActive feature is not working yet
+        #self.cursor.execute('SELECT shiftName FROM shifts WHERE isActive = 1 ORDER BY shiftId')
         arrayShifts = self.cursor.fetchall()
         self.shifts = []
         for i in range(0, len(arrayShifts)):
             self.shifts.append(arrayShifts[i][0])
+        print('Shifts listed')
 
     def listWorkers(self):
-        #select the table 'workers' from the database
-        #return the list of workers sorted by name
+        '''
+        lists the workers from the database sorted by name
+        '''
         self.cursor.execute('SELECT workerName FROM workers')
         self.workerNames = []
         workerNamesFetchall = self.cursor.fetchall()
@@ -71,8 +87,12 @@ class SHScheduler(tk.Frame): #class inheritance
             self.workerNames.append('')
         self.workerNames.sort()
         #print(self.workerNames)
+        print('Workers listed')
 
     def help(self):
+        '''
+        opens a help window
+        '''
         self.helpWindow = tk.Toplevel()
         self.helpWindow.title('Súgó')
         tk.Label(self.helpWindow, text='Súgó', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
@@ -106,11 +126,18 @@ Kilépés:
         tk.Label(self.helpWindow, text=helpText, justify='left').grid(row=1, column=0)
 
     def quit(self):
+        '''
+        saves the database and closes the program
+        '''
         self.saveDatabase()
         self.connection.close()
+        print('Closing...')
         self.mainWindow.destroy()
 
     def saveDatabase(self):
+        '''
+        saves the database
+        '''
         self.connection.commit()
         print('Database saved')
         
@@ -119,7 +146,9 @@ Kilépés:
 #Worker data
         
     def workerDataManager(self):
-        #gui for handling worker data
+        '''
+        gui for handling worker data
+        '''
         self.workerDataWindow = tk.Toplevel()
         self.workerDataWindow.grab_set()
         self.workerDataWindow.title('Dolgozók kezelése')
@@ -154,6 +183,10 @@ Kilépés:
         self.isActiveCheckbutton.grid(row=6, column=1)
 
     def nameMenuSelectionEvent(self, event):
+        '''
+        this function is called when you select a name from the dropdown list
+        it loads the data of the selected worker
+        '''
         #not works after adding or deleting a worker
         workerName = self.workerName.get()
         self.cursor.execute('SELECT dateOfBirth FROM workers WHERE workerName = ?', (workerName, ))
@@ -163,6 +196,7 @@ Kilépés:
         self.cursor.execute('SELECT membershipValidity FROM workers WHERE workerName = ?', (workerName, ))
         self.membershipValidityVariable.set( self.cursor.fetchone()[0] )
         self.cursor.execute('SELECT isActive FROM workers WHERE workerName = ?', (workerName, ))
+        #isActive feature is not working yet
         #self.isActiveVariable.set( True if self.cursor.fetchone()[0] == 1 else False )
         if self.cursor.fetchone()[0] == 1:
             self.isActiveCheckbutton.select()
@@ -170,6 +204,9 @@ Kilépés:
             self.isActiveCheckbutton.deselect()
         
     def updateNameOptionMenu(self, optionMenu, optionMenuVariable):
+        '''
+        where is this needed????????????
+        '''
         menu = optionMenu['menu']
         menu.delete(0, 'end')
         for workerName in self.workerNames:
@@ -177,6 +214,10 @@ Kilépés:
         #how to make self.nameMenuSelectionEvent work again?????????????????
             
     def addWorker(self):
+        '''
+        adds the worker with the given name to the database
+        calls saveWorkerData() to save the other data for the worker
+        '''
         workerName = self.workerName.get()
         if workerName != '':
             self.saveWorkerData()
@@ -186,9 +227,30 @@ Kilépés:
             self.nameOptions.configure(width=18)
             self.nameOptions.grid(row=0, column=1)
             #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
-            print(workerName + ' hozzáadva')
+        print(workerName + ' added')
 
+    def saveWorkerData(self):
+        '''
+        saves data (birthday, phone number, etc.) for the worker
+        '''
+        workerName = self.workerName.get()
+        dateOfBirth = self.dateOfBirthVariable.get()
+        phoneNumber = self.phoneNumberVariable.get()
+        membershipValidity = self.membershipValidityVariable.get()
+        isActive = self.isActiveVariable.get()
+        try: #if the worker is not in the database, insert
+            self.cursor.execute('INSERT INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive) VALUES (?, ?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive))
+        except: #if the worker is already in the database, update
+            self.cursor.execute('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET phoneNumber = "' + phoneNumber + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET membershipValidity = "' + membershipValidity + '" WHERE workerName = "' + workerName + '"')
+            self.cursor.execute('UPDATE workers SET isActive = "' + str(int(isActive)) + '" WHERE workerName = "' + workerName + '"')
+        self.saveDatabase()
+        
     def deleteWorker(self):
+        '''
+        deletes the worker with the given name from the database
+        '''
         workerName = self.workerName.get()
         self.cursor.execute('DELETE FROM workers WHERE workerName = ?', (workerName, ))
         self.saveDatabase()
@@ -198,29 +260,16 @@ Kilépés:
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=0, column=1)
         #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
-        print(workerName + ' törölve')
-
-    def saveWorkerData(self):
-        workerName = self.workerName.get()
-        dateOfBirth = self.dateOfBirthVariable.get()
-        phoneNumber = self.phoneNumberVariable.get()
-        membershipValidity = self.membershipValidityVariable.get()
-        isActive = self.isActiveVariable.get()
-        try:
-            self.cursor.execute('INSERT INTO workers (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive) VALUES (?, ?, ?, ?, ?)', (workerName, dateOfBirth, phoneNumber, membershipValidity, isActive))
-        except:
-            self.cursor.execute('UPDATE workers SET dateOfBirth = "' + dateOfBirth + '" WHERE workerName = "' + workerName + '"')
-            self.cursor.execute('UPDATE workers SET phoneNumber = "' + phoneNumber + '" WHERE workerName = "' + workerName + '"')
-            self.cursor.execute('UPDATE workers SET membershipValidity = "' + membershipValidity + '" WHERE workerName = "' + workerName + '"')
-            self.cursor.execute('UPDATE workers SET isActive = "' + str(int(isActive)) + '" WHERE workerName = "' + workerName + '"')
-        self.saveDatabase()
+        print(workerName + ' deleted')
 
 
 #------------------------------------------------------------------------------------------------------
 #Company requests
     
     def companyRequestManager(self):
-        #gui for handling company requests
+        '''
+        gui for handling company requests
+        '''
         self.companyRequestWindow = tk.Toplevel()
         self.companyRequestWindow.grab_set()
         self.companyRequestWindow.title('Munkarend kezelése')
@@ -239,8 +288,6 @@ Kilépés:
         self.companyRequestFrame = tk.Frame(self.companyRequestWindow, borderwidth=2, relief='ridge')
         self.companyRequestFrame.grid(row=2, column=0, sticky='W')
         tk.Button(self.companyRequestFrame, text='Kérések mentése', command=self.saveCompanyRequest).grid(row=1, column=1, columnspan=2)
-        #a táblázat kirajzolása külön metódus legyen
-        #hogy a műszakok szerkesztése után újra lehessen rajzolni
         for j in range(0, len(self.days)):
             tk.Label(self.companyRequestFrame, text=self.days[j], width=8).grid(row=2, column=1+j)
         for i in range(0, len(self.shifts)):
@@ -255,9 +302,12 @@ Kilépés:
                 entry.grid(row=3+i, column=1+j)
                 self.companyRequestEntries[j].append(entry)
                 self.companyRequestVariables[j].append(variable)
-        self.loadAndShowCompanyRequest() #load the previously saved company request (cannot store weekly request, only one table)
+        self.loadAndShowCompanyRequest() #load the previously saved company request
 
     def createCompanyRequest(self):
+        '''
+        creates a table for company requests for the given week
+        '''
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest_' + str(year) + '_' + str(week) + ' AS SELECT * FROM companyRequest WHERE 0')
@@ -275,6 +325,9 @@ Kilépés:
         self.saveDatabase()
 
     def loadAndShowCompanyRequest(self):
+        '''
+        loads company requests for the given week
+        '''
         self.createCompanyRequest()
         year = self.year.get()
         week = self.week.get()
@@ -297,6 +350,9 @@ Kilépés:
                     self.companyRequestVariables[j][i].set(workerNumber)
 
     def getCompanyRequest(self):
+        '''
+        takes the numbers from the entry table into a numpy array
+        '''
         self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
@@ -304,11 +360,12 @@ Kilépés:
         #print(self.companyRequestGrid)
         
     def saveCompanyRequest(self):
+        '''
+        saves company requests for the given week to the database
+        '''
         self.getCompanyRequest()
         year = self.year.get()
         week = self.week.get()
-##        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest (dayId INTEGER, shiftId INTEGER, workerNumber INTEGER, ' + 
-##                            ' UNIQUE(dayId, shiftId), UNIQUE(dayId, shiftId, workerNumber))')
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -325,11 +382,12 @@ Kilépés:
 
 
 #------------------------------------------------------------------------------------------------------
-#Company requests
-#Shift manager
+#Company requests - Shift manager
 
     def shiftManager(self):
-        #gui for managing shifts
+        '''
+        gui for managing shifts
+        '''
         self.shiftManagerWindow = tk.Toplevel()
         self.shiftManagerWindow.grab_set()
         self.shiftManagerWindow.title('Műszakok kezelése')
@@ -345,7 +403,6 @@ Kilépés:
             tk.Label(self.shiftsFrame, text=self.shifts[i], width=8).grid(row=2+i, column=0)
             self.cursor.execute('SELECT isActive FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
             isActive = self.cursor.fetchone()[0]
-            #print(isActive)
             variable = tk.BooleanVar()
             variable.set(isActive)
             checkbutton = tk.Checkbutton(self.shiftsFrame, variable=variable)
@@ -354,7 +411,11 @@ Kilépés:
             self.shiftVariables.append(variable)
         
     def addShiftManager(self):
-        #gui for adding new shifts
+        '''
+        gui for adding new shifts
+        isActive feature is not working yet,
+        so adding shifts and changing their activity may not work either
+        '''
         self.addShiftWindow = tk.Toplevel()
         self.addShiftWindow.grab_set()
         self.addShiftWindow.title('Új műszak')
@@ -367,11 +428,18 @@ Kilépés:
         tk.Button(self.addShiftFrame, text='Műszak felvétele', command=self.addNewShift).grid(row=1, column=0)
         
     def addNewShift(self):
+        '''
+        isActive feature is not working yet,
+        so adding shifts and changing their activity may not work either
+        '''
         newShiftName = self.newShiftName.get()
         self.cursor.execute('INSERT INTO shifts (shiftName, isActive) VALUES (?, ?)', (newShiftName, 1, ))
         self.saveDatabase()
 
     def saveShifts(self):
+        '''
+        saves the shifts table in the database
+        '''
         for i in range(0, len(self.shifts)):
             shiftName = self.shifts[i]
             isActive = self.shiftVariables[i].get()
@@ -383,7 +451,9 @@ Kilépés:
 #Worker requests
 
     def workerRequestManager(self):
-        #gui for handling worker requests
+        '''
+        gui for handling worker requests
+        '''
         self.workerRequestWindow = tk.Toplevel()
         self.workerRequestWindow.grab_set()
         self.workerRequestWindow.title('Ráérések kezelése')
@@ -408,6 +478,9 @@ Kilépés:
         self.showWorkerRequestGrid()
 
     def showWorkerRequestGrid(self):
+        '''
+        shows a check grid for selecting the requests for the given worker
+        '''
         year = self.year.get()
         week = self.week.get()
         for j in range(0, len(self.days)):
@@ -441,6 +514,11 @@ Kilépés:
         #print(self.requestVariables)
 
     def optionMenuSelectionEvent(self, event):
+        '''
+        event for selecting a name
+        first it deselects all checkbuttons
+        then it checks the shifts the worker requested for the given week
+        '''
         for daysCheckbuttons in self.requestCheckbuttons:
             for checkbutton in daysCheckbuttons:
                 checkbutton.deselect()
@@ -465,6 +543,9 @@ Kilépés:
                     pass
 
     def getWorkerRequest(self):
+        '''
+        takes the checks from the check table into a numpy array (1 if checked, else 0)
+        '''
         workerName = self.workerName.get()
         self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
         for j in range(0, len(self.days)):
@@ -473,6 +554,9 @@ Kilépés:
         #print(workerName, '\n', self.workerRequestGrid)
 
     def saveWorkerRequest(self):
+        '''
+        saves worker requests for the given week to the database 
+        '''
         self.getWorkerRequest()
         workerName = self.workerName.get()
         year = self.year.get()
@@ -481,7 +565,6 @@ Kilépés:
                             '(workerId, dayId, shiftId, UNIQUE(workerId, dayId, shiftId))')
         self.cursor.execute('SELECT workerId FROM workers WHERE workerName = ?', (workerName,))
         workerId = self.cursor.fetchone()[0]
-        #print('Name:', workerName, 'id:', workerId)
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -502,10 +585,12 @@ Kilépés:
 
 
 #------------------------------------------------------------------------------------------------------
-#schedule creation
+#Schedule manager
 
     def scheduleManager(self):
-        #gui for creating schedule
+        '''
+        gui for creating schedule
+        '''
         tableExists = 1
         year = self.year.get()
         week = self.week.get()
@@ -545,6 +630,9 @@ Kilépés:
             self.showWorkerRequests()
 
     def loadWorkerRequestsListToShow(self):
+        '''
+        loads worker max number of request for shifts for the week into a list
+        '''
         requests = [0]*len(self.shifts)
         year = self.year.get()
         week = self.week.get()
@@ -563,6 +651,10 @@ Kilépés:
         return requests
 
     def showWorkerRequests(self):
+        '''
+        creates a frame for handling worker requests for the given week
+        checks if a worker is scheduled
+        '''
         year = self.year.get()
         week = self.week.get()
         row = 1 #same as gridRow
@@ -627,6 +719,9 @@ Kilépés:
         #print(self.scheduleByHandVariables)
 
     def loadSchedule(self):
+        '''
+        loads the schedule and the backups for the given week
+        '''
         year = self.year.get()
         week = self.week.get()
         self.schedule = [] #
@@ -649,7 +744,6 @@ Kilépés:
                     workerNames.append(workerName)
                 #workerNames.sort()
                 self.schedule[j].append(workerNames)
-
                 #load the backup workers for the week (same as loading the scheduled workers)
                 self.cursor.execute('SELECT workerId FROM backup_'  + str(year) + '_' + str(week) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftID = ' + str(shiftId))
@@ -664,6 +758,10 @@ Kilépés:
         #print(self.schedule)
 
     def showSchedule(self):
+        '''
+        loads the schedule for the given week
+        and shows it in a seperate window
+        '''
         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!fix requests = [4, 1, 4]
         try:
             self.loadSchedule()
@@ -703,10 +801,16 @@ Kilépés:
             tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
 
     def scheduleExportXlsx(self):
+        '''
+        exports the schedule for the given week into a .xlsx file
+        first loads the schedule from the database
+        saves the backup workers for the week on a different worksheet (same as loading the scheduled workers)
+        '''
         self.loadSchedule()
         year = self.year.get()
         week = self.week.get()
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
+        #schedule
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         worksheet.title = 'schedule_' + str(year) + '_' + str(week)
@@ -733,8 +837,7 @@ Kilépés:
                     worksheet.cell(row=row, column=2+j).value = workerName
                     row += 1
             row_ = row_ + requests[i]
-
-        #save the backup workers for the week on a different worksheet (same as loading the scheduled workers)
+        #backup
         worksheet = workbook.create_sheet()
         worksheet.title = 'backup_' + str(year) + '_' + str(week)
         requests, row = [4, 1, 4], 2
@@ -762,6 +865,9 @@ Kilépés:
         workbook.save(filename=filename)
 
     def deleteSchedule(self):
+        '''
+        deletes schedule for the given week
+        '''
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('DROP TABLE IF EXISTS schedule_' + str(year) + '_' + str(week))
@@ -769,9 +875,10 @@ Kilépés:
         self.saveDatabase()
     
     def disableWorkerSelection(self, column, row, row_k, nameToDisable):
-        #if someone is scheduled to work in a shfit, he/she can't work on the given day
-        #the possibility to check him/her into another shift is disabled
-        #print(column, row, row_k, nameToDisable, self.scheduleByHandVariables[column][row], sep=', ') #why empty?
+        '''
+        if someone is scheduled to work in a shfit, he/she can't work in another shift on the given day
+        the possibility to check him/her into another shift is disabled
+        '''
         if self.scheduleByHandVariables[column][row][row_k][0].get() == True:
             for i in range(0, len(self.shifts)):
                 if i != row:
@@ -792,6 +899,10 @@ Kilépés:
         self.disableWorkerSelectionForShift(dayId, shiftId, column, row)
         
     def disableWorkerSelectionForShift(self, dayId, shiftId, column, row):
+        '''
+        if the workers requested by the company for a given shift is met,
+        the possibility to check other workers for that shift is disabled
+        '''
         year = self.year.get()
         week = self.week.get()
         requests = self.loadWorkerRequestsListToShow() #gives the max number of requests for shifts
@@ -846,7 +957,9 @@ Kilépés:
                 pass
             
     def highlightOn(self, event, frame):
-        #when the mouse hovers over a name, highlights all of his/her requests for the week in red
+        '''
+        when the mouse hovers over a name, highlights all of his/her requests for the week in red
+        '''
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
@@ -863,7 +976,9 @@ Kilépés:
             pass
 
     def highlightOff(self, event, frame):
-        #disables the above defined highlighting
+        '''
+        disables highlighting defined in highlightOn()
+        '''
         try:
             eventWidget = event.widget
             eventText = eventWidget['text']
@@ -880,6 +995,10 @@ Kilépés:
             pass
 
     def createBackup(self):
+        '''
+        creates a backup table for the given week
+        from the workers who are not scheduled
+        '''
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('DROP TABLE IF EXISTS backup_'  + str(year) + '_' + str(week))
@@ -904,6 +1023,10 @@ Kilépés:
                                             ' (workerId, dayId, shiftId) VALUES (?, ?, ?)', row)
 
     def createSchedule(self):
+        '''
+        creates schedule from the check table
+        also calls createBackup()
+        '''
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
@@ -922,12 +1045,16 @@ Kilépés:
 
 
     def fillCreatedSchedule(self):
+        '''
+        completes and saves the schedule from the check table based on the selected algorithm
+        also calls createBackup() and then getNumberOfScheduledDays()
+        '''
         year = self.year.get()
         week = self.week.get()
         self.createSchedule()
-        self.cursor.execute('DROP TABLE IF EXISTS companyRequestModified')
-##        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest WHERE 0')
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest_' + str(year) + '_' + str(week) + ' WHERE 0')
+        self.cursor.execute('DROP TABLE IF EXISTS companyRequestModified') #this modified table is for counting how many workers are still needed 
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest_'
+                            + str(year) + '_' + str(week) +' WHERE 0')
         for j in range(0, len(self.days)):
             self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
             dayId = self.cursor.fetchone()[0]
@@ -944,14 +1071,13 @@ Kilépés:
                     workerNeeded -= len(partialScheduledWorkers)
                 else:
                     workerNeeded = 0
-                #print(dayId, shiftId, workerNeeded)
                 self.cursor.execute('INSERT INTO companyRequestModified (dayId, shiftId, workerNumber) VALUES (?, ?, ?) ', (dayId, shiftId, workerNeeded))
 
         if self.algorithmVar.get() == 'random':
+            #completes the schedule randomly, may not schedule workers who are free anyway
             self.cursor.execute( 'SELECT * FROM workerRequests_' + str(year) + '_' + str(week) )
             workerRequests = self.cursor.fetchall()
             random.shuffle(workerRequests)
-            #print(len(workerRequests))
             for row in workerRequests:
                 workerId, dayId, shiftId = row[0], row[1], row[2]
                 self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
@@ -965,6 +1091,7 @@ Kilépés:
                         self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
                                             '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
         elif self.algorithmVar.get() == 'frommin':
+            #completes the table starting from the workers who requested the least days
             self.getNumberOfRequestedDays()
             self.cursor.execute('SELECT * FROM workers ORDER BY requestedDaysWeekly')
             workers = self.cursor.fetchall()
@@ -989,12 +1116,14 @@ Kilépés:
         self.saveDatabase()
 
     def getNumberOfRequestedDays(self):
+        '''
+        determines how many days each worker has requested for the week
+        '''
         self.numberOfRequestedDays = {}
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('SELECT workerId FROM workers')
         workerIds = [row[0] for row in self.cursor.fetchall()]
-        #print(workerIds)
         for workerId in workerIds:
             self.cursor.execute('SELECT dayId FROM workerRequests_' + str(year) + '_' + str(week) +
                                 ' WHERE workerId = ?', (workerId,))
@@ -1002,15 +1131,17 @@ Kilépés:
             dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
             self.numberOfRequestedDays[workerId] = (dayIds, len(dayIds))
             self.cursor.execute( 'UPDATE workers SET requestedDaysWeekly = "' + str(len(dayIds)) + '" WHERE workerId = "' + str(workerId) + '"' )
-        #print('numberOfRequestedDays:', self.numberOfRequestedDays)
+        print('numberOfRequestedDays:', self.numberOfRequestedDays)
 
     def getNumberOfScheduledDays(self):
+        '''
+        determines how many days each worker has been scheduled for for the week
+        '''
         self.numberOfScheduledDays = {}
         year = self.year.get()
         week = self.week.get()
         self.cursor.execute('SELECT workerId FROM workers')
         workerIds = [row[0] for row in self.cursor.fetchall()]
-        #print(workerIds)
         for workerId in workerIds:
             self.cursor.execute('SELECT dayId FROM schedule_' + str(year) + '_' + str(week) +
                                 ' WHERE workerId = ?', (workerId,))
@@ -1018,14 +1149,16 @@ Kilépés:
             dayIds = set(dayIds) #to get unique elements of the list (days must be unique)
             self.numberOfScheduledDays[workerId] = (dayIds, len(dayIds))
             self.cursor.execute( 'UPDATE workers SET scheduledDaysWeekly = "' + str(len(dayIds)) + '" WHERE workerId = "' + str(workerId) + '"' )
-        #print('numberOfScheduledDays: ' + self.numberOfScheduledDays)
+        print('numberOfScheduledDays: ' + self.numberOfScheduledDays)
 
 
 
 
     def workersRequested(self):
-        #all the workers requested for the week by the company
-        #the sum of all company requests for every shift of every day of the week
+        '''
+        all the workers requested for the week by the company
+        the sum of all company requests for every shift of every day of the week
+        '''
         self.wN = 0
         year = self.year.get()
         week = self.week.get()
@@ -1040,8 +1173,10 @@ Kilépés:
                 self.wN += workerNumber
 
     def workersLeft(self):
-        #all the workers left to schedule for the week
-        #the sum of all worker requests for every shift of every day of the week
+        '''
+        all the workers left to schedule for the week
+        the sum of all worker requests for every shift of every day of the week
+        '''
         self.wL = 0
         year = self.year.get()
         week = self.week.get()
