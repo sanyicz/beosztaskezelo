@@ -1,7 +1,7 @@
 # Schedule Manager
 A Python program to manage a company's workers' schedules.
 
-How to use (in Hungarian only):
+How to use (in Hungarian only for now):
 Dolgozók kezelése:
     Névválasztó menü: a már az adatbázisban lévő diákok közül lehet választani.
     Dolgozó felvétele: a Név mezőbe beírt névvel új dolgozót vesz fel az adatbázisba.
