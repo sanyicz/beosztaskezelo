@@ -78,13 +78,14 @@ class SHScheduler(tk.Frame): #class inheritance
         tk.Label(self.helpWindow, text='Súgó', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         helpText = """Dolgozók kezelése:
     Névválasztó menü: a már az adatbázisban lévő diákok közül lehet választani.
-    Dolgozó felvétele: nevet beírni a Név mezőbe, majd Új dolgozó felvétele.
+    Dolgozó felvétele: a Név mezőbe beírt névvel új dolgozót vesz fel az adatbázisba.
     Dolgozó törlése: a kiválaszott dolgozót törli az adatbázisból.
-    Adatok mentése: az adott dolgozóhoz menti a beírt adatokat.
+    Adatok mentése: az adott nevű dolgozóhoz menti a beírt adatokat.
 Munkarend kezelése:
+    Kérések kiírása: az adott heti kéréseket jeleníti meg.
     Műszakok kezelése: megadható, mely műszakok aktívak.
     A táblázatban megadható, hogy melyik nap melyik műszakjába hány embert kértek.
-    A Mentés gombbal rögzíteni kell a kéréseket. Nincs heti táblázat erre.
+    Kérések mentése: az adott heti kéréseket menti az adatbázisba.
 Ráérések kezelése:
     Ki kell választani a dolgozó nevét. A táblázatban kipipálható, hogy mely műszakokban ér rá.
     Ráérést lead: elmenti a kiválasztott dolgozó megadott ráéréseit az adott hétre.
