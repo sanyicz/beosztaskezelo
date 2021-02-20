@@ -1,7 +1,5 @@
 # Schedule Manager
 A Python program to manage a company's workers' schedules.
-g
-b
 
 How to use (in Hungarian only for now):
 Dolgozók kezelése:
