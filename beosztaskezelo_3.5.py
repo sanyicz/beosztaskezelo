@@ -13,14 +13,15 @@ class SHScheduler(tk.Frame): #class inheritance
         '''
         creates the main window with the main functions
         '''
-        tk.Frame.__init__(self, parentWindow) #?
-        self.mainWindow = parentWindow #?
-        #self.mainWindow.geometry('300x200')
+        tk.Frame.__init__(self, parentWindow) #class inheritance
+        self.mainWindow = parentWindow
         self.mainWindow.title('Beosztáskezelő')
-        self.loadDatabase('sh_database.db') #ha askopenfilename-mel történik, utána az entry-k nem szerkeszhetők
+        print('Initialization...')
+        self.loadDatabase('sh_database.db') #if askopenfilename used, some error occurs
         self.listDays()
         self.listShifts()
         self.listWorkers()
+        print('Program ready')
         
         year_week = datetime.datetime.now().isocalendar() #isocalendar() method returns a tuple: ISO Year, ISO Week Number, ISO Weekday
         self.year = tk.IntVar()
@@ -151,7 +152,7 @@ Kilépés:
         gui for handling worker data
         '''
         self.workerDataWindow = tk.Toplevel()
-        self.workerDataWindow.grab_set()
+        #self.workerDataWindow.grab_set()
         self.workerDataWindow.title('Dolgozók kezelése')
         tk.Label(self.workerDataWindow, text='Dolgozók kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         
@@ -188,7 +189,6 @@ Kilépés:
         this function is called when you select a name from the dropdown list
         it loads the data of the selected worker
         '''
-        #not works after adding or deleting a worker
         workerName = self.workerName.get()
         self.cursor.execute('SELECT dateOfBirth FROM workers WHERE workerName = ?', (workerName, ))
         self.dateOfBirthVariable.set( self.cursor.fetchone()[0] )
@@ -196,24 +196,14 @@ Kilépés:
         self.phoneNumberVariable.set( self.cursor.fetchone()[0] )
         self.cursor.execute('SELECT membershipValidity FROM workers WHERE workerName = ?', (workerName, ))
         self.membershipValidityVariable.set( self.cursor.fetchone()[0] )
-        self.cursor.execute('SELECT isActive FROM workers WHERE workerName = ?', (workerName, ))
         #isActive feature is not working yet
         #self.isActiveVariable.set( True if self.cursor.fetchone()[0] == 1 else False )
+        self.cursor.execute('SELECT isActive FROM workers WHERE workerName = ?', (workerName, ))
         if self.cursor.fetchone()[0] == 1:
             self.isActiveCheckbutton.select()
         else:
             self.isActiveCheckbutton.deselect()
-        
-    def updateNameOptionMenu(self, optionMenu, optionMenuVariable):
-        '''
-        where is this needed????????????
-        '''
-        menu = optionMenu['menu']
-        menu.delete(0, 'end')
-        for workerName in self.workerNames:
-            menu.add_command(label=workerName, command=lambda value=workerName: optionMenuVariable.set(value))
-        #how to make self.nameMenuSelectionEvent work again?????????????????
-            
+
     def addWorker(self):
         '''
         adds the worker with the given name to the database
@@ -223,11 +213,10 @@ Kilépés:
         if workerName != '':
             self.saveWorkerData()
             self.listWorkers()
-            self.nameOptions.destroy()
+            self.nameOptions.destroy() #destroy and recreate widget
             self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
             self.nameOptions.configure(width=18)
             self.nameOptions.grid(row=0, column=1)
-            #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
         print(workerName + ' added')
 
     def saveWorkerData(self):
@@ -256,11 +245,10 @@ Kilépés:
         self.cursor.execute('DELETE FROM workers WHERE workerName = ?', (workerName, ))
         self.saveDatabase()
         self.listWorkers()
-        self.nameOptions.destroy()
+        self.nameOptions.destroy() #destroy and recreate widget
         self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
         self.nameOptions.configure(width=18)
         self.nameOptions.grid(row=0, column=1)
-        #self.updateNameOptionMenu(self.nameOptions, self.workerName) #self.nameMenuSelectionEvent doesn't work after that, that's why it's destroyed and created again
         print(workerName + ' deleted')
 
 
@@ -272,7 +260,7 @@ Kilépés:
         gui for handling company requests
         '''
         self.companyRequestWindow = tk.Toplevel()
-        self.companyRequestWindow.grab_set()
+        #self.companyRequestWindow.grab_set()
         self.companyRequestWindow.title('Munkarend kezelése')
         tk.Label(self.companyRequestWindow, text='Munkarend kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         
@@ -289,6 +277,7 @@ Kilépés:
         self.companyRequestFrame = tk.Frame(self.companyRequestWindow, borderwidth=2, relief='ridge')
         self.companyRequestFrame.grid(row=2, column=0, sticky='W')
         tk.Button(self.companyRequestFrame, text='Kérések mentése', command=self.saveCompanyRequest).grid(row=1, column=1, columnspan=2)
+        #create the field of entries
         for j in range(0, len(self.days)):
             tk.Label(self.companyRequestFrame, text=self.days[j], width=8).grid(row=2, column=1+j)
         for i in range(0, len(self.shifts)):
@@ -303,7 +292,9 @@ Kilépés:
                 entry.grid(row=3+i, column=1+j)
                 self.companyRequestEntries[j].append(entry)
                 self.companyRequestVariables[j].append(variable)
-        self.loadAndShowCompanyRequest() #load the previously saved company request
+        #load the previously saved company request
+        #and fill the field of entries with the data
+        self.loadAndShowCompanyRequest()
 
     def createCompanyRequest(self):
         '''
@@ -322,12 +313,13 @@ Kilépés:
                 workerNumber = self.cursor.fetchone()[0]
                 self.cursor.execute('INSERT OR IGNORE INTO companyRequest_' + str(year) + '_' + str(week) +
                                     ' (dayID, shiftId, workerNumber) VALUES (?, ?, ?)',
-                                    (dayId, shiftId, workerNumber) ) #cast a numpy value to int: value.item()
+                                    (dayId, shiftId, workerNumber) )
         self.saveDatabase()
 
     def loadAndShowCompanyRequest(self):
         '''
         loads company requests for the given week
+        and fills the previousley created entry table with the data
         '''
         self.createCompanyRequest()
         year = self.year.get()
@@ -363,6 +355,7 @@ Kilépés:
     def saveCompanyRequest(self):
         '''
         saves company requests for the given week to the database
+        first calls getCompanyRequest() in order to get the data from the entry field
         '''
         self.getCompanyRequest()
         year = self.year.get()
@@ -390,7 +383,7 @@ Kilépés:
         gui for managing shifts
         '''
         self.shiftManagerWindow = tk.Toplevel()
-        self.shiftManagerWindow.grab_set()
+        #self.shiftManagerWindow.grab_set()
         self.shiftManagerWindow.title('Műszakok kezelése')
         tk.Label(self.shiftManagerWindow, text='Műszakok kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         self.miscFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
@@ -418,7 +411,7 @@ Kilépés:
         so adding shifts and changing their activity may not work either
         '''
         self.addShiftWindow = tk.Toplevel()
-        self.addShiftWindow.grab_set()
+        #self.addShiftWindow.grab_set()
         self.addShiftWindow.title('Új műszak')
         tk.Label(self.addShiftWindow, text='Új műszak felvétele', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
         self.addShiftFrame = tk.Frame(self.addShiftWindow, borderwidth=2, relief='ridge')
@@ -435,6 +428,7 @@ Kilépés:
         '''
         newShiftName = self.newShiftName.get()
         self.cursor.execute('INSERT INTO shifts (shiftName, isActive) VALUES (?, ?)', (newShiftName, 1, ))
+        #update the list of shifts
         self.saveDatabase()
 
     def saveShifts(self):
@@ -456,7 +450,7 @@ Kilépés:
         gui for handling worker requests
         '''
         self.workerRequestWindow = tk.Toplevel()
-        self.workerRequestWindow.grab_set()
+        #self.workerRequestWindow.grab_set()
         self.workerRequestWindow.title('Ráérések kezelése')
         tk.Label(self.workerRequestWindow, text='Ráérések kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
 
@@ -499,7 +493,9 @@ Kilépés:
                 shiftId = self.cursor.fetchone()[0]
                 self.cursor.execute( 'SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) +
                                      ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                if self.cursor.fetchone()[0] > 0: #only if requested
+                #a checkbutton should be active only if
+                #the requested number of workers is greater than 0 for the given shift
+                if self.cursor.fetchone()[0] > 0:
                     variable = tk.BooleanVar()
                     checkbutton = tk.Checkbutton(self.workerRequestFrame, variable=variable)
                     checkbutton.grid(row=2+i, column=1+j)
@@ -712,16 +708,19 @@ Kilépés:
                         checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
                         checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
                         try:
+                            #check if the worker to be shown is already scheduled there (in a previous run of the program)
                             self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
-                                                 ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) ) #check if the worker to be shown is already scheduled there (in a previous run of the program)
-                            if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]: #if a worker is scheduled, check the box
+                                                 ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                            if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]:
+                                #if a worker is scheduled, check the box
                                 checkbutton.select()
                         except:
                             pass
                         self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
                         self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
                     except:
-                        tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j) #shitty solution to fill empty spaces (rowconfigure?)
+                        #shitty solution to fill empty spaces (rowconfigure?)
+                        tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j)
                     gridRow_ += 1
                 gridRow = gridRow + requests[i]
         #print(self.scheduleByHandVariables)
@@ -824,7 +823,7 @@ Kilépés:
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         worksheet.title = 'schedule_' + str(year) + '_' + str(week)
-        #requests = [4, 1, 4]
+        #requests = [4, 1, 4], better solution below
         requests = self.loadRequestsListToShow('companyRequest')
         row = 2
         for j in range(0, len(self.days)):
@@ -851,7 +850,7 @@ Kilépés:
         #backup
         worksheet = workbook.create_sheet()
         worksheet.title = 'backup_' + str(year) + '_' + str(week)
-        #requests = [4, 1, 4]
+        #requests = [4, 1, 4], better solution above
         row = 2
         for j in range(0, len(self.days)):
             worksheet.cell(row=1, column=2+j).value = self.days[j]
@@ -921,10 +920,7 @@ Kilépés:
         workersScheduledForShift = []
         workerNumberScheduled = 0
         workersScheduledForDay = []
-        #print('requests: ', requests)
-        #print('dayId, shiftId, column, row: ', dayId, shiftId, column, row)
         for k in range(0, requests[row]):
-            #print(k)
             #try-except is not the most elegant solution
             #it is for overcoming that requests list contains the max number of requests for shifts (for example [8, 1, 5])
             #and the real requests for a given day can be fewer (for example [6, 1, 4])
@@ -950,7 +946,6 @@ Kilépés:
         self.cursor.execute( 'SELECT workerNumber FROM companyRequest_' + str(year) + '_' + str(week) + 
                             ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
         workerNumber = self.cursor.fetchone()[0]
-        #print(workerNumberScheduled, workerNumber)
         if workerNumberScheduled == workerNumber:
             try:
                 for k in range(0, requests[row]):
@@ -1048,9 +1043,7 @@ Kilépés:
         for day in range(0, len(self.scheduleByHandVariables)):
             for shift in range(0, len(self.scheduleByHandVariables[day])):
                 for row in self.scheduleByHandVariables[day][shift]:
-                    #row = [variable, workerId, workerName]
                     if row[0].get()==True:
-                        #print(day, shift, row[0].get(), row[2])
                         self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
                                             '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (row[1], day, shift) )
         self.createBackup()
@@ -1115,7 +1108,7 @@ Kilépés:
                                     ' WHERE workerId = ' + str(workerId) )
                 for row in self.cursor.fetchall():
                     dayId, shiftId = row[1], row[2]
-                    self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + #select workerId instead of *
+                    self.cursor.execute('SELECT workerId FROM schedule_' + str(year) + '_' + str(week) + 
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                     workers = self.cursor.fetchall()
                     self.cursor.execute('SELECT workerNumber FROM companyRequestModified' +
