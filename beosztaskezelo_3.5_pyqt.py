@@ -433,30 +433,39 @@ class SHScheduler(QtWidgets.QApplication):
         self.shiftManagerWindow.setWindowTitle('Műszakok kezelése')
         layout = QtWidgets.QGridLayout()
 
+        #header
+        headerLabel = QtWidgets.QLabel('Műszakok kezelése')
+        headerLayout = QtWidgets.QVBoxLayout()
+        headerLayout.addWidget(headerLabel)
+        layout.addLayout(headerLayout, 0, 0)
+        
+        #miscFrame
+        addShiftButton = QtWidgets.QPushButton('Új műszak')
+        addShiftButton.clicked.connect(self.addShiftManager)
+        saveShiftsButton = QtWidgets.QPushButton('Műszakok mentése')
+        saveShiftsButton.clicked.connect(self.saveShifts)
+        miscLayout = QtWidgets.QGridLayout() #layout
+        miscLayout.addWidget(addShiftButton, 0, 0)
+        miscLayout.addWidget(saveShiftsButton, 0, 1)
+        layout.addLayout(miscLayout, 1, 0)
+
+        #shiftsFrame
+        self.shiftCheckbuttons = []
+        self.shiftVariables = [] #????
+        shiftsLayout = QtWidgets.QGridLayout() #layout
+        for i in range(0, len(self.shifts)):
+            label = QtWidgets.QLabel(self.shifts[i])
+            shiftsLayout.addWidget(label, 2+i, 0)
+            self.cursor.execute('SELECT isActive FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+            isActive = self.cursor.fetchone()[0]
+            checkbutton = QtWidgets.QCheckBox()
+            checkbutton.setChecked(True if isActive else False)
+            shiftsLayout.addWidget(checkbutton, 2+i, 1)
+            self.shiftCheckbuttons.append(checkbutton)
+        layout.addLayout(shiftsLayout, 2, 0)
+
         self.shiftManagerWindow.setLayout(layout)
         self.shiftManagerWindow.show()
-        
-##        self.shiftManagerWindow = tk.Toplevel()
-##        #self.shiftManagerWindow.grab_set()
-##        self.shiftManagerWindow.title('Műszakok kezelése')
-##        tk.Label(self.shiftManagerWindow, text='Műszakok kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
-##        self.miscFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
-##        self.miscFrame.grid(row=1, column=0, sticky='W')
-##        tk.Button(self.miscFrame, text='Új műszak', command=self.addShiftManager).grid(row=0, column=0)
-##        tk.Button(self.miscFrame, text='Műszakok mentése', command=self.saveShifts).grid(row=0, column=1)
-##        self.shiftsFrame = tk.Frame(self.shiftManagerWindow, borderwidth=2, relief='ridge')
-##        self.shiftsFrame.grid(row=2, column=0, sticky='W')
-##        self.shiftCheckbuttons, self.shiftVariables = [], []
-##        for i in range(0, len(self.shifts)):
-##            tk.Label(self.shiftsFrame, text=self.shifts[i], width=8).grid(row=2+i, column=0)
-##            self.cursor.execute('SELECT isActive FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-##            isActive = self.cursor.fetchone()[0]
-##            variable = tk.BooleanVar()
-##            variable.set(isActive)
-##            checkbutton = tk.Checkbutton(self.shiftsFrame, variable=variable)
-##            checkbutton.grid(row=2+i, column=1)
-##            self.shiftCheckbuttons.append(checkbutton)
-##            self.shiftVariables.append(variable)
         
     def addShiftManager(self):
         '''
@@ -464,25 +473,38 @@ class SHScheduler(QtWidgets.QApplication):
         isActive feature is not working yet,
         so adding shifts and changing their activity may not work either
         '''
-        self.addShiftWindow = tk.Toplevel()
-        #self.addShiftWindow.grab_set()
-        self.addShiftWindow.title('Új műszak')
-        tk.Label(self.addShiftWindow, text='Új műszak felvétele', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
-        self.addShiftFrame = tk.Frame(self.addShiftWindow, borderwidth=2, relief='ridge')
-        self.addShiftFrame.grid(row=1, column=0, sticky='W')
-        tk.Label(self.addShiftFrame, text='Műszak neve').grid(row=0, column=0)
-        self.newShiftName = tk.StringVar()
-        tk.Entry(self.addShiftFrame, textvariable=self.newShiftName).grid(row=0, column=1)
-        tk.Button(self.addShiftFrame, text='Műszak felvétele', command=self.addNewShift).grid(row=1, column=0)
+        self.addShiftWindow = QtWidgets.QWidget()
+        self.addShiftWindow.setWindowTitle('Új műszak')
+        layout = QtWidgets.QGridLayout()
+
+        #header
+        headerLabel = QtWidgets.QLabel('Új műszak felvétele')
+        headerLayout = QtWidgets.QVBoxLayout()
+        headerLayout.addWidget(headerLabel)
+        layout.addLayout(headerLayout, 0, 0)
+
+        #addShiftFrame
+        shiftNameLabel = QtWidgets.QLabel('Műszak neve')
+        self.shiftNameEntry = QtWidgets.QLineEdit()
+        addShiftButton = QtWidgets.QPushButton('Műszak felvétele')
+        addShiftButton.clicked.connect(self.addNewShift)
+        addShiftLayout = QtWidgets.QGridLayout()
+        addShiftLayout.addWidget(shiftNameLabel, 0, 0)
+        addShiftLayout.addWidget(self.shiftNameEntry, 0, 1)
+        addShiftLayout.addWidget(addShiftButton, 1, 0)
+        layout.addLayout(addShiftLayout, 1, 0)
+
+        self.addShiftWindow.setLayout(layout)
+        self.addShiftWindow.show()
         
     def addNewShift(self):
         '''
         isActive feature is not working yet,
         so adding shifts and changing their activity may not work either
         '''
-        newShiftName = self.newShiftName.get()
+        newShiftName = self.shiftNameEntry.text()
         self.cursor.execute('INSERT INTO shifts (shiftName, isActive) VALUES (?, ?)', (newShiftName, 1, ))
-        #update the list of shifts
+        #need to be done: update the list of shifts
         self.saveDatabase()
 
     def saveShifts(self):
@@ -491,7 +513,7 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         for i in range(0, len(self.shifts)):
             shiftName = self.shifts[i]
-            isActive = self.shiftVariables[i].get()
+            isActive = self.shiftCheckbuttons[i].isChecked()
             isActive = 1 if isActive == True else 0
             self.cursor.execute('UPDATE shifts SET isActive = "' + str(isActive) + '" WHERE shiftName = "' + shiftName + '"')
         self.saveDatabase()
