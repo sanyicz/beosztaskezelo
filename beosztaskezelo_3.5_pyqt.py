@@ -695,10 +695,9 @@ class SHScheduler(QtWidgets.QApplication):
         gui for creating schedule
         '''
         tableExists = 1
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
+        print(year, week)
         try:
             self.cursor.execute('SELECT * FROM workerRequests_' + str(year) + '_' + str(week))
         except:
@@ -713,44 +712,59 @@ class SHScheduler(QtWidgets.QApplication):
         else:
             self.scheduleWindow = QtWidgets.QWidget()
             self.scheduleWindow.setWindowTitle('Beosztás kezelése')
-            layout = QtWidgets.QGridLayout()
+            self.layout = QtWidgets.QGridLayout()
 
             #header
             headerLabel = QtWidgets.QLabel('Beosztás kezelése')
             headerLayout = QtWidgets.QVBoxLayout()
             headerLayout.addWidget(headerLabel)
-            layout.addLayout(headerLayout, 0, 0)
+            self.layout.addLayout(headerLayout, 0, 0)
 
             #miscFrame
-            #widget
+            yearLabel = QtWidgets.QLabel('Év')
+            self.yearEntry = QtWidgets.QLineEdit()
+            self.yearEntry.setText(str(self.year))
+            weekLabel = QtWidgets.QLabel('Hét')
+            self.weekEntry = QtWidgets.QLineEdit()
+            self.weekEntry.setText(str(self.week))
+            showWorkerRequestsButton = QtWidgets.QPushButton('Ráérések kiírása')
+            showWorkerRequestsButton.clicked.connect(self.showWorkerRequests)
+            createScheduleButton = QtWidgets.QPushButton('Beosztás készítése')
+            createScheduleButton.clicked.connect(self.createSchedule)
+            fillCreatedScheduleButton = QtWidgets.QPushButton('Beosztás kiegészítése')
+            fillCreatedScheduleButton.clicked.connect(self.fillCreatedSchedule)
+            algorithmLabel = QtWidgets.QLabel('Algoritmus')
+            self.algorithmOptions = QtWidgets.QComboBox()
+            self.algorithmList = ['random', 'frommin']
+            self.algorithmOptions.addItems(self.algorithmList)
+            #self.algorithmOptions.activated.connect(self.nameMenuSelectionEvent)
+            showScheduleButton = QtWidgets.QPushButton('Beosztás kiírása')
+            showScheduleButton.clicked.connect(self.showSchedule)
+            scheduleExportXlsxButton = QtWidgets.QPushButton('Export xlsx-be')
+            scheduleExportXlsxButton.clicked.connect(self.scheduleExportXlsx)
+            deleteScheduleButton = QtWidgets.QPushButton('Beosztás törlése')
+            deleteScheduleButton.clicked.connect(self.deleteSchedule)
             miscLayout = QtWidgets.QGridLayout() #layout
-            #addWidget
-            layout.addLayout(miscLayout, 1, 0)
+            miscLayout.addWidget(yearLabel, 0, 0)
+            miscLayout.addWidget(self.yearEntry, 0, 1)
+            miscLayout.addWidget(weekLabel, 0, 2)
+            miscLayout.addWidget(self.weekEntry, 0, 3)
+            miscLayout.addWidget(showWorkerRequestsButton, 0, 4, 1, 2)
+            miscLayout.addWidget(createScheduleButton, 1, 0, 1, 2)
+            miscLayout.addWidget(fillCreatedScheduleButton, 1, 2, 1, 2)
+            miscLayout.addWidget(algorithmLabel, 1, 4)
+            miscLayout.addWidget(self.algorithmOptions, 1, 5)
+            miscLayout.addWidget(showScheduleButton, 2, 0, 1, 2)
+            miscLayout.addWidget(scheduleExportXlsxButton, 2, 2, 1, 2)
+            miscLayout.addWidget(deleteScheduleButton, 3, 0, 1, 2)
+            self.layout.addLayout(miscLayout, 1, 0)
 
             #scheduleFrame
-            
-            self.scheduleWindow.setLayout(layout)
+
+            self.scheduleWindow.setLayout(self.layout)
             self.scheduleWindow.show()
-            
-##            self.miscFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
-##            self.miscFrame.grid(row=1, column=0, sticky='W')
-##            tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
-##            tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
-##            tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
-##            tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-##            tk.Button(self.miscFrame, text='Ráérések kiírása', command=self.showWorkerRequests).grid(row=0, column=4, columnspan=2)
-##            tk.Button(self.miscFrame, text='Beosztás készítése', command=self.createSchedule).grid(row=1, column=0, columnspan=2)
-##            tk.Button(self.miscFrame, text='Beosztás kiegészítése', command=self.fillCreatedSchedule).grid(row=1, column=2, columnspan=2)
-##            tk.Label(self.miscFrame, text='Algoritmus').grid(row=1, column=4)
-##            self.algorithmList = ['random', 'frommin']
-##            self.algorithmVar = tk.StringVar()
-##            self.algorithmVar.set(self.algorithmList[0])
-##            tk.OptionMenu(self.miscFrame, self.algorithmVar, *self.algorithmList).grid(row=1, column=5)
-##            tk.Button(self.miscFrame, text='Beosztás kiírása', command=self.showSchedule).grid(row=2, column=0, columnspan=2)
-##            tk.Button(self.miscFrame, text='Export xlsx-be', command=self.scheduleExportXlsx).grid(row=2, column=2, columnspan=2)
-##            tk.Button(self.miscFrame, text='Beosztás törlése', command=self.deleteSchedule).grid(row=3, column=0, columnspan=2)
-            
-##            self.showWorkerRequests()
+
+            self.showWorkerRequests()
 
     def loadRequestsListToShow(self, table):
         '''
@@ -793,20 +807,25 @@ class SHScheduler(QtWidgets.QApplication):
         week = self.week
         row = 1 #same as gridRow
         requests = self.loadRequestsListToShow('workerRequests')
+        print('requests ready', requests)
         try:
-            self.scheduleFrame.destroy() #if exists
+            self.layout.removeItem(self.scheduleLayout) #if exists
+            print('scheduleLayout destroyed')
         except:
+            print('passed')
             pass
-        self.scheduleFrame = tk.Frame(self.scheduleWindow, borderwidth=2, relief='ridge')
-        self.scheduleFrame.grid(row=2, column=0, sticky='W')
-        self.scheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.scheduleFrame))
-        self.scheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.scheduleFrame))
+
+        self.scheduleLayout = QtWidgets.QGridLayout() #layout
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
-        tk.Label(self.scheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
+
+        yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
+        self.scheduleLayout.addWidget(yearWeekLabel, 0, 0)
         for j in range(0, len(self.days)):
-            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
+            label = QtWidgets.QLabel(self.days[j])
+            self.scheduleLayout.addWidget(label, 0, 1+2*j, 1, 2)
         for i in range(0, len(self.shifts)):
-            tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
+            label = QtWidgets.QLabel(self.shifts[i])
+            self.scheduleLayout.addWidget(label, row, 0)
             row = row + requests[i]
         for j in range(0, len(self.days)):
             self.scheduleByHandCheckbuttons.append([])
@@ -820,7 +839,8 @@ class SHScheduler(QtWidgets.QApplication):
                 self.scheduleByHandCheckbuttons[j].append([])
                 self.scheduleByHandVariables[j].append([])
                 self.scheduleByHandNameLabels[j].append([])
-                tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=gridRow, column=0)
+                label = QtWidgets.QLabel(self.shifts[i])
+                self.scheduleLayout.addWidget(label, gridRow, 0)
                 self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
                 shiftId = self.cursor.fetchone()[0]
                 self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
@@ -831,36 +851,40 @@ class SHScheduler(QtWidgets.QApplication):
                         workerId = workerIds[k][0]
                         self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
                         workerName = self.cursor.fetchone()[0]
-                        nameLabel = tk.Label(self.scheduleFrame, text=workerName)
-                        nameLabel.grid(row=gridRow_, column=1+2*j) #!!!!!!!!! column
+                        nameLabel = QtWidgets.QLabel(workerName)
+                        self.scheduleLayout.addWidget(nameLabel, gridRow_, 1+2*j)
                         self.scheduleByHandNameLabels[j][i].append(nameLabel)
-                        variable = tk.BooleanVar()
-                        checkbutton = tk.Checkbutton(self.scheduleFrame, variable=variable, command=lambda x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x1, x2, x3, x4))
-                        checkbutton.grid(row=gridRow_, column=1+2*j+1) #!!!!!!!!! column
+                        checkbutton = QtWidgets.QCheckBox()
+                        self.scheduleLayout.addWidget(checkbutton, gridRow_, 1+2*j+1)
                         try:
                             #check if the worker to be shown is already scheduled there (in a previous run of the program)
                             self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
                                                  ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
                             if workerId in [ workerIds[0] for workerIds in self.cursor.fetchall()]:
                                 #if a worker is scheduled, check the box
-                                checkbutton.select()
+                                checkbutton.setChecked(True)
                         except:
                             pass
                         self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
-                        self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
+##                        self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
                     except:
-                        #shitty solution to fill empty spaces (rowconfigure?)
-                        tk.Label(self.scheduleFrame, text='').grid(row=gridRow_, column=1+j)
+                        #shitty solution to fill empty spaces
+                        nameLabel = QtWidgets.QLabel('')
+                        self.scheduleLayout.addWidget(nameLabel, gridRow_, 1+j)
                     gridRow_ += 1
                 gridRow = gridRow + requests[i]
+
+        self.layout.addLayout(self.scheduleLayout, 2, 0)
         #print(self.scheduleByHandVariables)
 
     def loadSchedule(self):
         '''
         loads the schedule and the backups for the given week
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.schedule = [] #
         self.backup = [] #
         for j in range(0, len(self.days)):
@@ -881,6 +905,7 @@ class SHScheduler(QtWidgets.QApplication):
                     workerNames.append(workerName)
                 #workerNames.sort()
                 self.schedule[j].append(workerNames)
+                
                 #load the backup workers for the week (same as loading the scheduled workers)
                 self.cursor.execute('SELECT workerId FROM backup_'  + str(year) + '_' + str(week) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftID = ' + str(shiftId))
@@ -899,26 +924,26 @@ class SHScheduler(QtWidgets.QApplication):
         loads the schedule for the given week
         and shows it in a seperate window
         '''
+        year = self.yearEntry.text()
+        week = self.weekEntry.text()
         try:
+##            self.showScheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.showScheduleFrame))
+##            self.showScheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.showScheduleFrame))
             self.loadSchedule()
-            self.showScheduleWindow = tk.Toplevel()
-            self.showScheduleFrame = tk.Frame(self.showScheduleWindow, borderwidth=2, relief='ridge')
-            self.showScheduleFrame.grid(row=3, column=0, sticky='W')
-            
-            self.showScheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.showScheduleFrame))
-            self.showScheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.showScheduleFrame))
-            
-            #requests = [4, 1, 4]
+            self.showScheduleWindow = QtWidgets.QWidget()
             requests = self.loadRequestsListToShow('companyRequest')
-            #print(requests)
-            row = 1 #starting row is the one under the buttons
-            year = self.year.get()
-            week = self.week.get()
-            tk.Label(self.showScheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
+            print(requests)
+            row = 1 #starting row is the one under the day names
+
+            layout = QtWidgets.QGridLayout() #layout
+            yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
+            layout.addWidget(yearWeekLabel, 0, 0)
             for j in range(0, len(self.days)):
-                tk.Label(self.showScheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+j)
+                label = QtWidgets.QLabel(self.days[j])
+                layout.addWidget(label, 0, 1+j)
             for i in range(0, len(self.shifts)):
-                tk.Label(self.showScheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
+                label = QtWidgets.QLabel(self.shifts[i])
+                layout.addWidget(label, row, 0)
                 row = row + requests[i]
             for j in range(0, len(self.days)):
                 row_ = 1
@@ -929,15 +954,21 @@ class SHScheduler(QtWidgets.QApplication):
                             workerName = self.schedule[j][i][k]
                         except:
                             workerName = ''
-                        tk.Label(self.showScheduleFrame, text=workerName).grid(row=row, column=1+j)
+                        nameLabel = QtWidgets.QLabel(workerName)
+                        layout.addWidget(nameLabel, row, 1+j)
                         row += 1
                 row_ = row_ + requests[i]
+            
+            self.showScheduleWindow.setLayout(layout)
+            self.showScheduleWindow.show()
+
         except:
-            self.showScheduleWindow = tk.Toplevel()
-            self.showScheduleWindow.grab_set()
-            year = self.year.get()
-            week = self.week.get()
-            tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
+            print('Table schedule_' + str(year) + '_' + str(week) + ' does not exist.')
+##            self.showScheduleWindow = tk.Toplevel()
+##            self.showScheduleWindow.grab_set()
+##            year = self.year.get()
+##            week = self.week.get()
+##            tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
 
     def scheduleExportXlsx(self):
         '''
@@ -946,8 +977,10 @@ class SHScheduler(QtWidgets.QApplication):
         saves the backup workers for the week on a different worksheet (same as loading the scheduled workers)
         '''
         self.loadSchedule()
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
         #schedule
         workbook = openpyxl.Workbook()
@@ -1009,8 +1042,10 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         deletes schedule for the given week
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS schedule_' + str(year) + '_' + str(week))
         self.cursor.execute('DROP TABLE IF EXISTS backup_' + str(year) + '_' + str(week))
         self.saveDatabase()
@@ -1136,8 +1171,10 @@ class SHScheduler(QtWidgets.QApplication):
         creates a backup table for the given week
         from the workers who are not scheduled
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS backup_'  + str(year) + '_' + str(week))
         self.cursor.execute('CREATE TABLE backup_'  + str(year) + '_' + str(week) +
                             '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
@@ -1165,17 +1202,23 @@ class SHScheduler(QtWidgets.QApplication):
         creates schedule from the check table
         also calls createBackup()
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
         self.cursor.execute('CREATE TABLE schedule_'  + str(year) + '_' + str(week) +
                             '(workerId INTEGER, dayId INTEGER, shiftId INTEGER, UNIQUE(workerId, dayId), UNIQUE(workerId, dayId, shiftId))')
-        for day in range(0, len(self.scheduleByHandVariables)):
-            for shift in range(0, len(self.scheduleByHandVariables[day])):
-                for row in self.scheduleByHandVariables[day][shift]:
-                    if row[0].get()==True:
+        for day in range(0, len(self.scheduleByHandCheckbuttons)):
+            for shift in range(0, len(self.scheduleByHandCheckbuttons[day])):
+                for i in range(0, len(self.scheduleByHandCheckbuttons[day][shift])):
+                    checkbutton = self.scheduleByHandCheckbuttons[day][shift][i]
+                    if checkbutton.isChecked() == True:
+                        workerName = self.scheduleByHandNameLabels[day][shift][i].text()
+                        self.cursor.execute('SELECT workerId FROM workers WHERE workerName = ?', (workerName, ))
+                        workerId = self.cursor.fetchone()[0]
                         self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
-                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (row[1], day, shift) )
+                                            '(workerId, dayId, shiftId) VALUES (?, ?, ?)', (workerId, day, shift) )
         self.createBackup()
         self.saveDatabase()
         print('Schedule created')
@@ -1186,8 +1229,10 @@ class SHScheduler(QtWidgets.QApplication):
         completes and saves the schedule from the check table based on the selected algorithm
         also calls createBackup() and then getNumberOfScheduledDays()
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.createSchedule()
         self.cursor.execute('DROP TABLE IF EXISTS companyRequestModified') #this modified table is for counting how many workers are still needed 
         self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequestModified AS SELECT * FROM companyRequest_'
@@ -1210,7 +1255,7 @@ class SHScheduler(QtWidgets.QApplication):
                     workerNeeded = 0
                 self.cursor.execute('INSERT INTO companyRequestModified (dayId, shiftId, workerNumber) VALUES (?, ?, ?) ', (dayId, shiftId, workerNeeded))
 
-        if self.algorithmVar.get() == 'random':
+        if self.algorithmOptions.currentText() == 'random':
             #completes the schedule randomly, may not schedule workers who are free anyway
             self.cursor.execute( 'SELECT * FROM workerRequests_' + str(year) + '_' + str(week) )
             workerRequests = self.cursor.fetchall()
@@ -1227,7 +1272,7 @@ class SHScheduler(QtWidgets.QApplication):
                     if not workerId in workers:
                         self.cursor.execute('INSERT OR IGNORE INTO schedule_'  + str(year) + '_' + str(week) +
                                             '(workerId, dayId, shiftId) VALUES (?, ?, ?)', row )
-        elif self.algorithmVar.get() == 'frommin':
+        elif self.algorithmOptions.currentText() == 'frommin':
             #completes the table starting from the workers who requested the least days
             self.getNumberOfRequestedDays()
             self.cursor.execute('SELECT * FROM workers ORDER BY requestedDaysWeekly')
@@ -1258,8 +1303,10 @@ class SHScheduler(QtWidgets.QApplication):
         determines how many days each worker has requested for the week
         '''
         self.numberOfRequestedDays = {}
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.cursor.execute('SELECT workerId FROM workers')
         workerIds = [row[0] for row in self.cursor.fetchall()]
         for workerId in workerIds:
@@ -1276,8 +1323,10 @@ class SHScheduler(QtWidgets.QApplication):
         determines how many days each worker has been scheduled for for the week
         '''
         self.numberOfScheduledDays = {}
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         self.cursor.execute('SELECT workerId FROM workers')
         workerIds = [row[0] for row in self.cursor.fetchall()]
         for workerId in workerIds:

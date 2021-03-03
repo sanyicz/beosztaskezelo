@@ -131,9 +131,9 @@ Kilépés:
         '''
         saves the database and closes the program
         '''
+        print('Closing...')
         self.saveDatabase()
         self.connection.close()
-        print('Closing...')
         self.mainWindow.destroy()
 
     def saveDatabase(self):
@@ -751,6 +751,7 @@ Kilépés:
                     workerNames.append(workerName)
                 #workerNames.sort()
                 self.schedule[j].append(workerNames)
+                
                 #load the backup workers for the week (same as loading the scheduled workers)
                 self.cursor.execute('SELECT workerId FROM backup_'  + str(year) + '_' + str(week) +
                                     ' WHERE dayId = ' + str(dayId) + ' AND shiftID = ' + str(shiftId))
@@ -769,6 +770,8 @@ Kilépés:
         loads the schedule for the given week
         and shows it in a seperate window
         '''
+        year = self.year.get()
+        week = self.week.get()
         try:
             self.loadSchedule()
             self.showScheduleWindow = tk.Toplevel()
@@ -781,9 +784,7 @@ Kilépés:
             #requests = [4, 1, 4]
             requests = self.loadRequestsListToShow('companyRequest')
             #print(requests)
-            row = 1 #starting row is the one under the buttons
-            year = self.year.get()
-            week = self.week.get()
+            row = 1 #starting row is the one under the day names
             tk.Label(self.showScheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
             for j in range(0, len(self.days)):
                 tk.Label(self.showScheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+j)
@@ -805,8 +806,6 @@ Kilépés:
         except:
             self.showScheduleWindow = tk.Toplevel()
             self.showScheduleWindow.grab_set()
-            year = self.year.get()
-            week = self.week.get()
             tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
 
     def scheduleExportXlsx(self):
