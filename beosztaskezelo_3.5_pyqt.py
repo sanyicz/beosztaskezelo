@@ -1,12 +1,13 @@
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
-
+import sys
 import sqlite3
 import numpy as np
 import random
 import openpyxl
 import datetime
+
 
 class Label(QtWidgets.QLabel):
     def __init__(self, text, layout):
@@ -39,13 +40,13 @@ class Label(QtWidgets.QLabel):
         
 class SHScheduler(QtWidgets.QApplication):
     '''a program to handle a company's weekle work schedule, the worker's data, etc.'''
-    def __init__(self):
+    def __init__(self, args):
         '''
         creates the main window with the main functions
         '''
         #is it ok to inherit like this?
         #or: no inheritance, delete this and uncomment rows in main
-        super(SHScheduler, self).__init__([])
+        super(SHScheduler, self).__init__(args)
         
         self.mainWindow = QtWidgets.QWidget()
         self.mainWindow.setWindowTitle('Beosztáskezelő')
@@ -1350,5 +1351,6 @@ class SHScheduler(QtWidgets.QApplication):
 
         
 if __name__ == '__main__':
-    app = SHScheduler()
+    app = SHScheduler(sys.argv)
+    app.setStyle('Fusion')
     app.exec()
