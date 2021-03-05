@@ -633,25 +633,41 @@ Kilépés:
         requests = [0]*len(self.shifts)
         year = self.year.get()
         week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                if table == 'workerRequests':
-                    self.cursor.execute('SELECT workerId FROM ' + table + '_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workerIds = self.cursor.fetchall()
-                    if len(workerIds) >= requests[i]:
-                        requests[i] = len(workerIds)
-                elif table == 'companyRequest':
-                    self.cursor.execute('SELECT workerNumber FROM ' + table + '_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                    workerNumber = self.cursor.fetchone()[0]
-                    if workerNumber >= requests[i]:
-                        requests[i] = workerNumber
-        #print(table, requests)
+        tableExists = 1
+        if table == 'workerRequests':
+            try:
+                self.cursor.execute('SELECT workerId FROM ' + table + '_' + str(year) + '_' + str(week))
+            except:
+                tableExists = 0
+        elif table == 'companyRequest':
+            try:
+                self.cursor.execute('SELECT workerNumber FROM ' + table + '_' + str(year) + '_' + str(week))
+            except:
+                tableExists = 0
+            
+        if tableExists == 1:
+            for j in range(0, len(self.days)):
+                self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
+                dayId = self.cursor.fetchone()[0]
+                for i in range(0, len(self.shifts)):
+                    self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
+                    shiftId = self.cursor.fetchone()[0]
+                    if table == 'workerRequests':
+                        self.cursor.execute('SELECT workerId FROM ' + table + '_' + str(year) + '_' + str(week) +
+                                            ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                        workerIds = self.cursor.fetchall()
+                        if len(workerIds) >= requests[i]:
+                            requests[i] = len(workerIds)
+                    elif table == 'companyRequest':
+                        self.cursor.execute('SELECT workerNumber FROM ' + table + '_' + str(year) + '_' + str(week) +
+                                            ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
+                        workerNumber = self.cursor.fetchone()[0]
+                        if workerNumber >= requests[i]:
+                            requests[i] = workerNumber
+            #print(table, requests)
+        else:
+            text = 'Table ' + table + '_' + str(year) + '_' + str(week) + ' does not exist.'
+            print(text)
         return requests
 
     def showWorkerRequests(self):
@@ -663,6 +679,8 @@ Kilépés:
         week = self.week.get()
         row = 1 #same as gridRow
         requests = self.loadRequestsListToShow('workerRequests')
+##        requestsSum = sum(requests)
+##        if requestsSum > 0:
         try:
             self.scheduleFrame.destroy() #if exists
         except:
@@ -806,7 +824,8 @@ Kilépés:
         except:
             self.showScheduleWindow = tk.Toplevel()
             self.showScheduleWindow.grab_set()
-            tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
+            text = 'Table schedule_' + str(year) + '_' + str(week) + ' does not exist.'
+            tk.Label(self.showScheduleWindow, text=text).grid(row=0, column=0)
 
     def scheduleExportXlsx(self):
         '''
@@ -889,6 +908,8 @@ Kilépés:
         if someone is scheduled to work in a shfit, he/she can't work in another shift on the given day
         the possibility to check him/her into another shift is disabled
         '''
+        #print(column, row, row_k, nameToDisable)
+        #print(self.scheduleByHandVariables[column][row][row_k][0].get(), self.scheduleByHandNameLabels[column][row][row_k]['text'])
         if self.scheduleByHandVariables[column][row][row_k][0].get() == True:
             for i in range(0, len(self.shifts)):
                 if i != row:

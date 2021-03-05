@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 import sqlite3
@@ -7,7 +8,48 @@ import random
 import openpyxl
 import datetime
 
+class Label(QtWidgets.QLabel):
+    def __init__(self, text, layout):
+        QtWidgets.QLabel.__init__(self, text)
+        self.layout = layout
+        self.workerName = text
 
+    def enterEvent(self, event):
+        index = self.layout.count()
+        while(index >= 0):
+            try:
+                nameLabel = self.layout.itemAt(index).widget()
+                if nameLabel.text() == self.workerName and nameLabel.text() != '':
+                    nameLabel.setStyleSheet('color: red')
+            except:
+                pass
+            index -=1
+
+    def leaveEvent(self, event):
+        index = self.layout.count()
+        while(index >= 0):
+            try:
+                nameLabel = self.layout.itemAt(index).widget()
+                if nameLabel.text() == self.workerName and nameLabel.text() != '':
+                    nameLabel.setStyleSheet('color: black')
+            except:
+                pass
+            index -=1
+
+
+class Checkbutton(QtWidgets.QCheckBox):
+    def __init__(self, state, layout):
+        super().__init__()
+        self.initUI(state)
+        self.layout = layout
+
+    def initUI(self, state):
+        self.setChecked(state)
+
+    def stateChanged(self, layout):
+        pass
+
+        
 class SHScheduler(QtWidgets.QApplication):
     '''a program to handle a company's weekle work schedule, the worker's data, etc.'''
     def __init__(self):
@@ -706,9 +748,12 @@ class SHScheduler(QtWidgets.QApplication):
         if tableExists == 0:
             text = 'Table workerRequests_' + str(year) + '_' + str(week) + ' does not exist.'
             print(text)
-##            self.messageWindow = tk.Toplevel()
-##            self.messageWindow.grab_set()
-##            tk.Label(self.messageWindow, text=text).grid(row=0, column=0)
+            self.scheduleWindow = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout() #layout
+            label = QtWidgets.QLabel(text)
+            layout.addWidget(label)
+            self.scheduleWindow.setLayout(layout)
+            self.scheduleWindow.show()
         else:
             self.scheduleWindow = QtWidgets.QWidget()
             self.scheduleWindow.setWindowTitle('Beosztás kezelése')
@@ -807,16 +852,19 @@ class SHScheduler(QtWidgets.QApplication):
         week = self.week
         row = 1 #same as gridRow
         requests = self.loadRequestsListToShow('workerRequests')
-        print('requests ready', requests)
+        #print('requests ready', requests)
         try:
             self.layout.removeItem(self.scheduleLayout) #if exists
-            print('scheduleLayout destroyed')
+            #print('scheduleLayout destroyed')
         except:
-            print('passed')
             pass
+            #print('passed')
 
         self.scheduleLayout = QtWidgets.QGridLayout() #layout
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
+        
+##        self.scheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.scheduleFrame))
+##        self.scheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.scheduleFrame))
 
         yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
         self.scheduleLayout.addWidget(yearWeekLabel, 0, 0)
@@ -851,11 +899,14 @@ class SHScheduler(QtWidgets.QApplication):
                         workerId = workerIds[k][0]
                         self.cursor.execute('SELECT workerName FROM workers WHERE workerId = ' + str(workerId))
                         workerName = self.cursor.fetchone()[0]
-                        nameLabel = QtWidgets.QLabel(workerName)
+                        #nameLabel = QtWidgets.QLabel(workerName)
+                        nameLabel = Label(workerName, self.scheduleLayout)
                         self.scheduleLayout.addWidget(nameLabel, gridRow_, 1+2*j)
                         self.scheduleByHandNameLabels[j][i].append(nameLabel)
                         checkbutton = QtWidgets.QCheckBox()
                         self.scheduleLayout.addWidget(checkbutton, gridRow_, 1+2*j+1)
+                        self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
+                        self.scheduleByHandVariables[j][i].append([checkbutton, nameLabel])
                         try:
                             #check if the worker to be shown is already scheduled there (in a previous run of the program)
                             self.cursor.execute( 'SELECT workerId FROM schedule_' + str(year) + '_' + str(week) +
@@ -865,8 +916,7 @@ class SHScheduler(QtWidgets.QApplication):
                                 checkbutton.setChecked(True)
                         except:
                             pass
-                        self.scheduleByHandCheckbuttons[j][i].append(checkbutton)
-##                        self.scheduleByHandVariables[j][i].append([variable, workerId, workerName])
+                        checkbutton.stateChanged.connect(lambda x0, x1=j, x2=i, x3=k, x4=workerName: self.disableWorkerSelection(x0, x1, x2, x3, x4))
                     except:
                         #shitty solution to fill empty spaces
                         nameLabel = QtWidgets.QLabel('')
@@ -935,6 +985,7 @@ class SHScheduler(QtWidgets.QApplication):
             print(requests)
             row = 1 #starting row is the one under the day names
 
+            #self.showScheduleNameLabels = []
             layout = QtWidgets.QGridLayout() #layout
             yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
             layout.addWidget(yearWeekLabel, 0, 0)
@@ -946,6 +997,7 @@ class SHScheduler(QtWidgets.QApplication):
                 layout.addWidget(label, row, 0)
                 row = row + requests[i]
             for j in range(0, len(self.days)):
+                #self.showScheduleNameLabels.append([])
                 row_ = 1
                 row = row_
                 for i in range(0, len(self.shifts)):
@@ -954,8 +1006,10 @@ class SHScheduler(QtWidgets.QApplication):
                             workerName = self.schedule[j][i][k]
                         except:
                             workerName = ''
-                        nameLabel = QtWidgets.QLabel(workerName)
+                        #nameLabel = QtWidgets.QLabel(workerName)
+                        nameLabel = Label(workerName, layout) #eddig ez a legjobb jelölt
                         layout.addWidget(nameLabel, row, 1+j)
+                        #self.showScheduleNameLabels[j].append(nameLabel)
                         row += 1
                 row_ = row_ + requests[i]
             
@@ -963,12 +1017,14 @@ class SHScheduler(QtWidgets.QApplication):
             self.showScheduleWindow.show()
 
         except:
-            print('Table schedule_' + str(year) + '_' + str(week) + ' does not exist.')
-##            self.showScheduleWindow = tk.Toplevel()
-##            self.showScheduleWindow.grab_set()
-##            year = self.year.get()
-##            week = self.week.get()
-##            tk.Label(self.showScheduleWindow, text='Table schedule_' + str(year) + '_' + str(week) + ' does not exist.').grid(row=0, column=0)
+            text = 'Table schedule_' + str(year) + '_' + str(week) + ' does not exist.'
+            print(text)
+            self.showScheduleWindow = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout() #layout
+            label = QtWidgets.QLabel(text)
+            layout.addWidget(label)
+            self.showScheduleWindow.setLayout(layout)
+            self.showScheduleWindow.show()
 
     def scheduleExportXlsx(self):
         '''
@@ -1050,24 +1106,27 @@ class SHScheduler(QtWidgets.QApplication):
         self.cursor.execute('DROP TABLE IF EXISTS backup_' + str(year) + '_' + str(week))
         self.saveDatabase()
     
-    def disableWorkerSelection(self, column, row, row_k, nameToDisable):
+    def disableWorkerSelection(self, CheckState, column, row, row_k, nameToDisable):
         '''
         if someone is scheduled to work in a shfit, he/she can't work in another shift on the given day
         the possibility to check him/her into another shift is disabled
         '''
-        if self.scheduleByHandVariables[column][row][row_k][0].get() == True:
-            for i in range(0, len(self.shifts)):
+        #print('disableWorkerSelection called')
+        #print(self.scheduleByHandVariables[column][row][row_k][0].isChecked(), self.scheduleByHandVariables[column][row][row_k][1].text())
+        #print(column, row, row_k, nameToDisable)
+        
+        if self.scheduleByHandVariables[column][row][row_k][0].isChecked() == True:
+           for i in range(0, len(self.shifts)):
                 if i != row:
                     for k in range(0, len(self.scheduleByHandNameLabels[column][i])):
-                        if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
-                            self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'disabled'
+                        if self.scheduleByHandNameLabels[column][i][k].text() == nameToDisable:
+                            self.scheduleByHandCheckbuttons[column][i][k].setEnabled(False)
         else:
             for i in range(0, len(self.shifts)):
                 if i != row:
                     for k in range(0, len(self.scheduleByHandNameLabels[column][i])):
-                        if self.scheduleByHandNameLabels[column][i][k]['text'] == nameToDisable:
-                            self.scheduleByHandCheckbuttons[column][i][k]['state'] = 'normal'
-
+                        if self.scheduleByHandNameLabels[column][i][k].text() == nameToDisable:
+                            self.scheduleByHandCheckbuttons[column][i][k].setEnabled(True)
         self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[column], ))
         dayId = self.cursor.fetchone()[0]
         self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[row], ))
@@ -1079,8 +1138,10 @@ class SHScheduler(QtWidgets.QApplication):
         if the workers requested by the company for a given shift is met,
         the possibility to check other workers for that shift is disabled
         '''
-        year = self.year.get()
-        week = self.week.get()
+        self.year = self.yearEntry.text()
+        self.week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         requests = self.loadRequestsListToShow('workerRequests') #gives the max number of requests for shifts
         workersScheduledForShift = []
         workerNumberScheduled = 0
@@ -1092,9 +1153,9 @@ class SHScheduler(QtWidgets.QApplication):
             #so the index k may result in out of range error
             #and company requests is [4, 1, 4]
             try:
-                if self.scheduleByHandVariables[column][row][k][0].get() == True:
+                if self.scheduleByHandVariables[column][row][k][0].isChecked() == True:
                     workerNumberScheduled += 1
-                    workersScheduledForShift.append(self.scheduleByHandNameLabels[column][row][k]['text'])
+                    workersScheduledForShift.append(self.scheduleByHandNameLabels[column][row][k].text())
             except:
                 pass
         #print('workersScheduledForShift: ', workersScheduledForShift)
@@ -1102,8 +1163,8 @@ class SHScheduler(QtWidgets.QApplication):
         for row_ in range(0, len(requests)):
             for k in range(0, requests[row_]):
                 try:
-                    if self.scheduleByHandVariables[column][row_][k][0].get() == True:
-                        workersScheduledForDay.append(self.scheduleByHandNameLabels[column][row_][k]['text'])
+                    if self.scheduleByHandVariables[column][row_][k][0].isChecked() == True:
+                        workersScheduledForDay.append(self.scheduleByHandNameLabels[column][row_][k].text())
                 except:
                     pass
         #print('workersScheduledForDay: ', workersScheduledForDay)
@@ -1114,58 +1175,20 @@ class SHScheduler(QtWidgets.QApplication):
         if workerNumberScheduled == workerNumber:
             try:
                 for k in range(0, requests[row]):
-                    name = self.scheduleByHandNameLabels[column][row][k]['text']
+                    name = self.scheduleByHandNameLabels[column][row][k].text()
                     if name not in workersScheduledForShift and name not in workersScheduledForDay:
-                        self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'disabled'
+                        self.scheduleByHandCheckbuttons[column][row][k].setEnabled(False)
             except:
                 pass
         else:
             try:
                 for k in range(0, requests[row]):
-                    name = self.scheduleByHandNameLabels[column][row][k]['text']
+                    name = self.scheduleByHandNameLabels[column][row][k].text()
                     if name not in workersScheduledForShift and name not in workersScheduledForDay:
-                        self.scheduleByHandCheckbuttons[column][row][k]['state'] = 'normal'
+                        self.scheduleByHandCheckbuttons[column][row][k].setEnabled(True)
             except:
                 pass
             
-    def highlightOn(self, event, frame):
-        '''
-        when the mouse hovers over a name, highlights all of his/her requests for the week in red
-        '''
-        try:
-            eventWidget = event.widget
-            eventText = eventWidget['text']
-            widgetList = frame.winfo_children()
-            highlightList = []
-            for widget in widgetList:
-               if isinstance(widget, tkinter.Label):
-                    text = widget['text']
-                    if text==eventText:
-                        highlightList.append(widget)
-            for widget in highlightList:
-                widget.configure(fg='red')
-        except:
-            pass
-
-    def highlightOff(self, event, frame):
-        '''
-        disables highlighting defined in highlightOn()
-        '''
-        try:
-            eventWidget = event.widget
-            eventText = eventWidget['text']
-            widgetList = frame.winfo_children()
-            highlightList = []
-            for widget in widgetList:
-               if isinstance(widget, tkinter.Label):
-                    text = widget['text']
-                    if text==eventText:
-                        highlightList.append(widget)
-            for widget in highlightList:
-                widget.configure(fg='black')
-        except:
-            pass
-
     def createBackup(self):
         '''
         creates a backup table for the given week
@@ -1382,9 +1405,5 @@ class SHScheduler(QtWidgets.QApplication):
 
         
 if __name__ == '__main__':
-##    app = QtWidgets.QApplication([])
-##    root = SHScheduler()
-##    app.exec()
-
     app = SHScheduler()
     app.exec()
