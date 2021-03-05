@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.filedialog
+from tkinter import ttk 
 import sqlite3
 import numpy as np
 import random
@@ -161,13 +162,13 @@ Kilépés:
         tk.Label(self.workerDataFrame, text='Név').grid(row=0, column=0)
         self.workerName = tk.StringVar()
         self.workerName.set('név')
-        self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
-        self.nameOptions.configure(width=18)
+        self.nameOptions = ttk.Combobox(self.workerDataFrame, width=18, textvariable=self.workerName)
+        self.nameOptions['values'] = self.workerNames
+        self.nameOptions.bind('<<ComboboxSelected>>', self.nameMenuSelectionEvent)
         self.nameOptions.grid(row=0, column=1)
-        self.nameEntry = tk.Entry(self.workerDataFrame, textvariable=self.workerName, width=20)
-        self.nameEntry.grid(row=1, column=1)
-        tk.Button(self.workerDataFrame, text='Dolgozó felvétele', command=self.addWorker).grid(row=1, column=2)
-        tk.Button(self.workerDataFrame, text='Dolgozó törlése', command=self.deleteWorker).grid(row=1, column=3)
+        #self.nameOptions.current()
+        tk.Button(self.workerDataFrame, text='Dolgozó felvétele', command=self.addWorker).grid(row=0, column=2)
+        tk.Button(self.workerDataFrame, text='Dolgozó törlése', command=self.deleteWorker).grid(row=0, column=3)
         tk.Label(self.workerDataFrame, text='Adatok', font=('Helvetica 10 bold')).grid(row=2, column=0, columnspan=2, sticky='W')
         tk.Button(self.workerDataFrame, text='Adatok mentése', command=self.saveWorkerData).grid(row=3, column=2)
         tk.Label(self.workerDataFrame, text='Születési idő').grid(row=3, column=0)
@@ -214,8 +215,9 @@ Kilépés:
             self.saveWorkerData()
             self.listWorkers()
             self.nameOptions.destroy() #destroy and recreate widget
-            self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
-            self.nameOptions.configure(width=18)
+            self.nameOptions = ttk.Combobox(self.workerDataFrame, width=18, textvariable=self.workerName)
+            self.nameOptions['values'] = self.workerNames
+            self.nameOptions.bind('<<ComboboxSelected>>', self.nameMenuSelectionEvent)
             self.nameOptions.grid(row=0, column=1)
         print(workerName + ' added')
 
@@ -246,8 +248,9 @@ Kilépés:
         self.saveDatabase()
         self.listWorkers()
         self.nameOptions.destroy() #destroy and recreate widget
-        self.nameOptions = tk.OptionMenu(self.workerDataFrame, self.workerName, *self.workerNames, command=self.nameMenuSelectionEvent)
-        self.nameOptions.configure(width=18)
+        self.nameOptions = ttk.Combobox(self.workerDataFrame, width=18, textvariable=self.workerName)
+        self.nameOptions['values'] = self.workerNames
+        self.nameOptions.bind('<<ComboboxSelected>>', self.nameMenuSelectionEvent)
         self.nameOptions.grid(row=0, column=1)
         print(workerName + ' deleted')
 
@@ -462,8 +465,10 @@ Kilépés:
         tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
         tk.Label(self.miscFrame, text='Név').grid(row=2, column=0)
         self.workerName = tk.StringVar()
-        self.nameOptions = tk.OptionMenu(self.miscFrame, self.workerName, *self.workerNames, command=self.optionMenuSelectionEvent)
-        self.nameOptions.configure(width=18)
+        self.workerName.set('név')
+        self.nameOptions = ttk.Combobox(self.miscFrame, width=18, textvariable=self.workerName)
+        self.nameOptions['values'] = self.workerNames
+        self.nameOptions.bind('<<ComboboxSelected>>', self.optionMenuSelectionEvent)
         self.nameOptions.grid(row=2, column=1, columnspan=4)
         tk.Button(self.miscFrame, text='Ráérést lead', command=self.saveWorkerRequest).grid(row=3, column=1)
         tk.Button(self.miscFrame, text='Beosztás kezelése', command=self.scheduleManager).grid(row=4, column=1)
