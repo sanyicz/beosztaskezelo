@@ -1181,46 +1181,6 @@ Kilépés:
 
 
 
-
-    def workersRequested(self):
-        '''
-        all the workers requested for the week by the company
-        the sum of all company requests for every shift of every day of the week
-        '''
-        self.wN = 0
-        year = self.year.get()
-        week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerNumber = self.cursor.fetchone()[0]
-                self.wN += workerNumber
-
-    def workersLeft(self):
-        '''
-        all the workers left to schedule for the week
-        the sum of all worker requests for every shift of every day of the week
-        '''
-        self.wL = 0
-        year = self.year.get()
-        week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                try:
-                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
-                    self.wL += len(self.cursor.fetchall())
-                except:
-                    pass
-
         
 if __name__ == '__main__':
     root = tk.Tk()

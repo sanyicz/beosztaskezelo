@@ -36,19 +36,6 @@ class Label(QtWidgets.QLabel):
                 pass
             index -=1
 
-
-class Checkbutton(QtWidgets.QCheckBox):
-    def __init__(self, state, layout):
-        super().__init__()
-        self.initUI(state)
-        self.layout = layout
-
-    def initUI(self, state):
-        self.setChecked(state)
-
-    def stateChanged(self, layout):
-        pass
-
         
 class SHScheduler(QtWidgets.QApplication):
     '''a program to handle a company's weekle work schedule, the worker's data, etc.'''
@@ -739,7 +726,6 @@ class SHScheduler(QtWidgets.QApplication):
         tableExists = 1
         year = self.year
         week = self.week
-        print(year, week)
         try:
             self.cursor.execute('SELECT * FROM workerRequests_' + str(year) + '_' + str(week))
         except:
@@ -1361,47 +1347,6 @@ class SHScheduler(QtWidgets.QApplication):
             self.cursor.execute( 'UPDATE workers SET scheduledDaysWeekly = "' + str(len(dayIds)) + '" WHERE workerId = "' + str(workerId) + '"' )
         print('numberOfScheduledDays: ' + self.numberOfScheduledDays)
 
-
-
-
-    def workersRequested(self):
-        '''
-        all the workers requested for the week by the company
-        the sum of all company requests for every shift of every day of the week
-        '''
-        self.wN = 0
-        year = self.year.get()
-        week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                self.cursor.execute( 'SELECT workerNumber FROM companyRequest WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId) )
-                workerNumber = self.cursor.fetchone()[0]
-                self.wN += workerNumber
-
-    def workersLeft(self):
-        '''
-        all the workers left to schedule for the week
-        the sum of all worker requests for every shift of every day of the week
-        '''
-        self.wL = 0
-        year = self.year.get()
-        week = self.week.get()
-        for j in range(0, len(self.days)):
-            self.cursor.execute('SELECT dayId FROM days WHERE dayName = ?', (self.days[j], ))
-            dayId = self.cursor.fetchone()[0]
-            for i in range(0, len(self.shifts)):
-                self.cursor.execute('SELECT shiftId FROM shifts WHERE shiftName = ?', (self.shifts[i], ))
-                shiftId = self.cursor.fetchone()[0]
-                try:
-                    self.cursor.execute('SELECT workerId FROM workerRequests_' + str(year) + '_' + str(week) +
-                                        ' WHERE dayId = ' + str(dayId) + ' AND shiftId = ' + str(shiftId))
-                    self.wL += len(self.cursor.fetchall())
-                except:
-                    pass
 
         
 if __name__ == '__main__':
