@@ -267,17 +267,26 @@ Kilépés:
         #self.companyRequestWindow.grab_set()
         self.companyRequestWindow.title('Munkarend kezelése')
         tk.Label(self.companyRequestWindow, text='Munkarend kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
-        
+
+        #miscFrame
         self.miscFrame = tk.Frame(self.companyRequestWindow, borderwidth=2, relief='ridge')
         self.miscFrame.grid(row=1, column=0, sticky='W')
         tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
         tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
         tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
         tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-        tk.Button(self.miscFrame, text='Kérések kiírása', command=self.loadAndShowCompanyRequest).grid(row=0, column=4)
+        tk.Button(self.miscFrame, text='Kérések kiírása', command=self.showCompanyRequestFrame).grid(row=0, column=4)
         tk.Button(self.miscFrame, text='Műszakok kezelése', command=self.shiftManager).grid(row=1, column=0, columnspan=2)
         tk.Button(self.miscFrame, text='Ráérések kezelése', command=self.workerRequestManager).grid(row=2, column=0, columnspan=2)
 
+        #companyRequestFrame
+        self.showCompanyRequestFrame()
+
+    def showCompanyRequestFrame(self):
+        try:
+            self.companyRequestFrame.destroy()
+        except:
+            pass
         self.companyRequestFrame = tk.Frame(self.companyRequestWindow, borderwidth=2, relief='ridge')
         self.companyRequestFrame.grid(row=2, column=0, sticky='W')
         tk.Button(self.companyRequestFrame, text='Kérések mentése', command=self.saveCompanyRequest).grid(row=1, column=1, columnspan=2)

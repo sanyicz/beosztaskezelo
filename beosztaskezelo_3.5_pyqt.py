@@ -331,7 +331,7 @@ class SHScheduler(QtWidgets.QApplication):
         weekEntry.textChanged.connect(lambda x=weekEntry.text(): self.setWeek(x))
         weekEntry.setText(str(self.week))
         showButton = QtWidgets.QPushButton('Kérések kiírása')
-        showButton.clicked.connect(self.loadAndShowCompanyRequest)
+        showButton.clicked.connect(self.showCompanyRequestFrame)
         shiftsButton = QtWidgets.QPushButton('Műszakok kezelése')
         shiftsButton.clicked.connect(self.shiftManager)
         requestsButton = QtWidgets.QPushButton('Ráérések kezelése')
@@ -347,12 +347,29 @@ class SHScheduler(QtWidgets.QApplication):
         layout.addLayout(miscLayout, 1, 0)
 
         #companyRequestFrame
-        companyRequestLayout = QtWidgets.QGridLayout() #layout
+        self.companyRequestLayout = QtWidgets.QGridLayout() #layout
+        layout.addLayout(self.companyRequestLayout, 2, 0)
+        
+        self.companyRequestWindow.setLayout(layout)
+        self.companyRequestWindow.show()
+        
+        self.showCompanyRequestFrame()
+
+    def showCompanyRequestFrame(self):
+        try:
+            while self.companyRequestLayout.count():
+                widget = self.companyRequestLayout.itemAt(0).widget()
+                widget.setParent(None)
+        except:
+            pass
         saveRequestsButton = QtWidgets.QPushButton('Kérések mentése')
         saveRequestsButton.clicked.connect(self.saveCompanyRequest)
-        companyRequestLayout.addWidget(saveRequestsButton, 1, 1, 1, 2) #positon (1,1), occupies 1 row and 2 columns
+        self.companyRequestLayout.addWidget(saveRequestsButton, 1, 1, 1, 2) #positon (1,1), occupies 1 row and 2 columns
         #create the field of entries
-        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        year = self.year
+        week = self.week
+        weekDay = self.weekDay
+        date = datetime.datetime.fromisocalendar(int(year), int(week), int(weekDay))
         startDate = date - datetime.timedelta(days=self.weekDay-1)
         #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
@@ -361,10 +378,10 @@ class SHScheduler(QtWidgets.QApplication):
             text = str(month) + '.' + str(day) + '.\n' + self.days[j]
             #text = self.days[j]
             label = QtWidgets.QLabel(text)
-            companyRequestLayout.addWidget(label, 2, 1+j)
+            self.companyRequestLayout.addWidget(label, 2, 1+j)
         for i in range(0, len(self.shifts)):
             label = QtWidgets.QLabel(self.shifts[i])
-            companyRequestLayout.addWidget(label, 3+i, 0)
+            self.companyRequestLayout.addWidget(label, 3+i, 0)
         self.companyRequestEntries = [] #lists to store the entries and their variables
         self.companyRequestVariables = [] #????
         for j in range(0, len(self.days)):
@@ -372,13 +389,9 @@ class SHScheduler(QtWidgets.QApplication):
             self.companyRequestVariables.append([])
             for i in range(0, len(self.shifts)):
                 entry = QtWidgets.QLineEdit()
-                companyRequestLayout.addWidget(entry, 3+i, 1+j)
+                self.companyRequestLayout.addWidget(entry, 3+i, 1+j)
                 self.companyRequestEntries[j].append(entry)
                 #self.companyRequestVariables[j].append(variable) #????
-        layout.addLayout(companyRequestLayout, 2, 0)
-
-        self.companyRequestWindow.setLayout(layout)
-        self.companyRequestWindow.show()
 
         #load the previously saved company request
         #and fill the field of entries with the data
@@ -587,13 +600,13 @@ class SHScheduler(QtWidgets.QApplication):
         else:
             self.workerRequestWindow = QtWidgets.QWidget()
             self.workerRequestWindow.setWindowTitle('Ráérések kezelése')
-            layout = QtWidgets.QGridLayout()
+            self.workerRequestManagerlayout = QtWidgets.QGridLayout()
 
             #header
             headerLabel = QtWidgets.QLabel('Ráérések kezelése')
             headerLayout = QtWidgets.QVBoxLayout()
             headerLayout.addWidget(headerLabel)
-            layout.addLayout(headerLayout, 0, 0)
+            self.workerRequestManagerlayout.addLayout(headerLayout, 0, 0)
 
             #miscFrame
             yearLabel = QtWidgets.QLabel('Év')
@@ -624,13 +637,13 @@ class SHScheduler(QtWidgets.QApplication):
             miscLayout.addWidget(self.nameOptions, 2, 1, 1, 4)
             miscLayout.addWidget(saveButton, 3, 1)
             miscLayout.addWidget(scheduleButton, 4, 1)
-            layout.addLayout(miscLayout, 1, 0)
+            self.workerRequestManagerlayout.addLayout(miscLayout, 1, 0)
 
             #workerRequestFrame
             self.workerRequestLayout = QtWidgets.QGridLayout() #layout
-            layout.addLayout(self.workerRequestLayout, 2, 0)
-
-            self.workerRequestWindow.setLayout(layout)
+            self.workerRequestManagerlayout.addLayout(self.workerRequestLayout, 2, 0)
+            
+            self.workerRequestWindow.setLayout(self.workerRequestManagerlayout)
             self.workerRequestWindow.show()
 
             self.showWorkerRequestGrid()
@@ -642,9 +655,16 @@ class SHScheduler(QtWidgets.QApplication):
         year = self.year
         week = self.week
         weekDay = self.weekDay
-        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        date = datetime.datetime.fromisocalendar(int(year), int(week), int(weekDay))
         startDate = date - datetime.timedelta(days=self.weekDay-1)
         #endDate = startDate + datetime.timedelta(days=6)
+        try:
+            while self.workerRequestLayout.count():
+                widget = self.workerRequestLayout.itemAt(0).widget()
+                widget.setParent(None)
+        except:
+            pass
+        
         for j in range(0, len(self.days)):
             dayDate = startDate + datetime.timedelta(days=j)
             month, day = dayDate.month, dayDate.day
@@ -831,6 +851,8 @@ class SHScheduler(QtWidgets.QApplication):
             self.layout.addLayout(miscLayout, 1, 0)
 
             #scheduleFrame
+            self.scheduleLayout = QtWidgets.QGridLayout() #layout
+            self.layout.addLayout(self.scheduleLayout, 2, 0)
 
             self.scheduleWindow.setLayout(self.layout)
             self.scheduleWindow.show()
@@ -877,13 +899,12 @@ class SHScheduler(QtWidgets.QApplication):
         requests = self.loadRequestsListToShow('workerRequests')
         #print('requests ready', requests)
         try:
-            self.layout.removeItem(self.scheduleLayout) #if exists
-            #print('scheduleLayout destroyed')
+            while self.scheduleLayout.count():
+                widget = self.scheduleLayout.itemAt(0).widget()
+                widget.setParent(None)
         except:
             pass
-            #print('passed')
 
-        self.scheduleLayout = QtWidgets.QGridLayout() #layout
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
         
         yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
@@ -950,8 +971,6 @@ class SHScheduler(QtWidgets.QApplication):
                         self.scheduleLayout.addWidget(nameLabel, gridRow_, 1+j)
                     gridRow_ += 1
                 gridRow = gridRow + requests[i]
-
-        self.layout.addLayout(self.scheduleLayout, 2, 0)
         #print(self.scheduleByHandVariables)
 
     def loadSchedule(self):
