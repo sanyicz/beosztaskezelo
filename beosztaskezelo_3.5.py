@@ -2,7 +2,7 @@ import tkinter as tk
 import tkinter.filedialog
 from tkinter import ttk 
 import sqlite3
-import numpy as np
+import numpy as np #is it really necessary?
 import random
 import openpyxl
 import datetime
@@ -349,7 +349,8 @@ Kilépés:
         '''
         takes the numbers from the entry table into a numpy array
         '''
-        self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+##        self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+        self.companyRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 self.companyRequestGrid[i][j] = self.companyRequestVariables[j][i].get()
@@ -549,7 +550,8 @@ Kilépés:
         takes the checks from the check table into a numpy array (1 if checked, else 0)
         '''
         workerName = self.workerName.get()
-        self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+##        self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+        self.workerRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 self.workerRequestGrid[i][j] = 1 if self.requestVariables[j][i].get() else 0 #when creating these checkbuttons and variables, the indices are reversed
@@ -635,7 +637,7 @@ Kilépés:
         '''
         loads worker max number of request for shifts for the week into a list
         '''
-        requests = [0]*len(self.shifts)
+        requests = list(range(len(self.shifts))) #[0]*len(self.shifts)
         year = self.year.get()
         week = self.week.get()
         tableExists = 1

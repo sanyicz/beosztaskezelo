@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 import sys
 import sqlite3
-import numpy as np
+import numpy as np #is it really necessary?
 import random
 import openpyxl
 import datetime
@@ -11,7 +11,7 @@ import datetime
 
 class Label(QtWidgets.QLabel):
     def __init__(self, text, layout):
-        QtWidgets.QLabel.__init__(self, text)
+        QtWidgets.QLabel.__init__(self, text) #or super().init__(self, text)
         self.layout = layout
         self.workerName = text
 
@@ -46,7 +46,7 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         #is it ok to inherit like this?
         #or: no inheritance, delete this and uncomment rows in main
-        super(SHScheduler, self).__init__(args)
+        super().__init__(args) #or super(SHScheduler, self).__init__(args) -> why?
         
         self.mainWindow = QtWidgets.QWidget()
         self.mainWindow.setWindowTitle('Beosztáskezelő')
@@ -421,10 +421,11 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         takes the numbers from the entry table into a numpy array
         '''
-        self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+##        self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+        self.companyRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
-                self.companyRequestGrid[i][j] = self.companyRequestEntries[j][i].text()
+                self.companyRequestGrid[i][j] = int(self.companyRequestEntries[j][i].text())
         #print(self.companyRequestGrid)
         
     def saveCompanyRequest(self):
@@ -616,7 +617,8 @@ class SHScheduler(QtWidgets.QApplication):
             label = QtWidgets.QLabel(self.shifts[i])
             self.workerRequestLayout.addWidget(label, 2+i, 0)
         self.requestCheckbuttons = [] #lists to store the entries and their variables
-        self.requestVariables = [] #????        
+        self.requestVariables = [] #????
+        #if companyRequest_year_week doesn't exists, load companyRequest_year_week-1
         for j in range(0, len(self.days)):
             self.requestCheckbuttons.append([])
             self.requestVariables.append([])
@@ -678,7 +680,8 @@ class SHScheduler(QtWidgets.QApplication):
         takes the checks from the check table into a numpy array (1 if checked, else 0)
         '''
         workerName = self.nameOptions.currentText()
-        self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+##        self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
+        self.workerRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
                 self.workerRequestGrid[i][j] = 1 if self.requestCheckbuttons[j][i].isChecked() == True else 0 #when creating these checkbuttons and variables, the indices are reversed
@@ -802,7 +805,7 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         loads worker max number of request for shifts for the week into a list
         '''
-        requests = [0]*len(self.shifts)
+        requests = list(range(len(self.shifts))) #[0]*len(self.shifts)
         self.year = self.yearEntry.text()
         self.week = self.weekEntry.text()
         year = self.year
