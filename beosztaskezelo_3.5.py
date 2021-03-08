@@ -477,6 +477,7 @@ Kilépés:
             tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
             tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
             tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
+            tk.Button(self.miscFrame, text='Ráéréstábla kirajzolása', command=self.showWorkerRequestGrid).grid(row=0, column=4)
             tk.Label(self.miscFrame, text='Név').grid(row=2, column=0)
             self.workerName = tk.StringVar()
             self.workerName.set('név')
