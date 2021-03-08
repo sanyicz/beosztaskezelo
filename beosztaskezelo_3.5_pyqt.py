@@ -359,6 +359,7 @@ class SHScheduler(QtWidgets.QApplication):
         try:
             while self.companyRequestLayout.count():
                 widget = self.companyRequestLayout.itemAt(0).widget()
+                self.companyRequestLayout.removeWidget(widget)
                 widget.setParent(None)
         except:
             pass
@@ -661,6 +662,7 @@ class SHScheduler(QtWidgets.QApplication):
         try:
             while self.workerRequestLayout.count():
                 widget = self.workerRequestLayout.itemAt(0).widget()
+                self.workerRequestLayout.removeWidget(widget)
                 widget.setParent(None)
         except:
             pass
@@ -901,6 +903,7 @@ class SHScheduler(QtWidgets.QApplication):
         try:
             while self.scheduleLayout.count():
                 widget = self.scheduleLayout.itemAt(0).widget()
+                self.scheduleLayout.removeWidget(widget)
                 widget.setParent(None)
         except:
             pass
