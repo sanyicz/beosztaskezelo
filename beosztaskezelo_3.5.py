@@ -2,7 +2,6 @@ import tkinter as tk
 import tkinter.filedialog
 from tkinter import ttk 
 import sqlite3
-import numpy as np #is it really necessary?
 import random
 import openpyxl
 import datetime
@@ -349,7 +348,6 @@ Kilépés:
         '''
         takes the numbers from the entry table into a numpy array
         '''
-##        self.companyRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
         self.companyRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
@@ -550,7 +548,6 @@ Kilépés:
         takes the checks from the check table into a numpy array (1 if checked, else 0)
         '''
         workerName = self.workerName.get()
-##        self.workerRequestGrid = np.zeros((len(self.shifts), len(self.days)), dtype=int)
         self.workerRequestGrid = [[0 for j in range(len(self.days))] for i in range(len(self.shifts))]
         for j in range(0, len(self.days)):
             for i in range(0, len(self.shifts)):
@@ -851,6 +848,8 @@ Kilépés:
         #requests = [4, 1, 4], better solution below
         requests = self.loadRequestsListToShow('companyRequest')
         row = 2
+        worksheet.cell(row=1, column=1).value = str(year) + '/' + str(week)
+        worksheet.cell(row=1, column=1).font = openpyxl.styles.Font(bold=True)
         for j in range(0, len(self.days)):
             worksheet.cell(row=1, column=2+j).value = self.days[j]
             worksheet.cell(row=1, column=2+j).font = openpyxl.styles.Font(bold=True)
@@ -899,6 +898,7 @@ Kilépés:
                     row += 1
             row_ = row_ + requests[i]
         workbook.save(filename=filename)
+        print('Schedule exported')
 
     def deleteSchedule(self):
         '''
