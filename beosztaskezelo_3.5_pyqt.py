@@ -60,6 +60,7 @@ class SHScheduler(QtWidgets.QApplication):
         year_week = datetime.datetime.now().isocalendar() #isocalendar() method returns a tuple: ISO Year, ISO Week Number, ISO Weekday
         self.year = year_week[0]
         self.week = year_week[1]
+        self.weekDay = year_week[2]
         
         self.label1 = QtWidgets.QLabel('Beosztáskezelő')
         self.button1 = QtWidgets.QPushButton('Dolgozók kezelése')
@@ -89,11 +90,11 @@ class SHScheduler(QtWidgets.QApplication):
 
     def setYear(self, year):
         self.year = year
-        print(self.year)
+        #print(self.year)
 
     def setWeek(self, week):
         self.week = week
-        print(self.week)
+        #print(self.week)
         
     def loadDatabase(self, dataBaseFilename=''):
         '''
@@ -351,8 +352,15 @@ class SHScheduler(QtWidgets.QApplication):
         saveRequestsButton.clicked.connect(self.saveCompanyRequest)
         companyRequestLayout.addWidget(saveRequestsButton, 1, 1, 1, 2) #positon (1,1), occupies 1 row and 2 columns
         #create the field of entries
+        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        startDate = date - datetime.timedelta(days=self.weekDay-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            label = QtWidgets.QLabel(self.days[j])
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            label = QtWidgets.QLabel(text)
             companyRequestLayout.addWidget(label, 2, 1+j)
         for i in range(0, len(self.shifts)):
             label = QtWidgets.QLabel(self.shifts[i])
@@ -633,8 +641,16 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         year = self.year
         week = self.week
+        weekDay = self.weekDay
+        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        startDate = date - datetime.timedelta(days=self.weekDay-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            label = QtWidgets.QLabel(self.days[j])
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            label = QtWidgets.QLabel(text)
             self.workerRequestLayout.addWidget(label, 1, 1+j)
         for i in range(0, len(self.shifts)):
             label = QtWidgets.QLabel(self.shifts[i])
@@ -856,6 +872,7 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         year = self.year
         week = self.week
+        weekDay = self.weekDay
         row = 1 #same as gridRow
         requests = self.loadRequestsListToShow('workerRequests')
         #print('requests ready', requests)
@@ -871,8 +888,15 @@ class SHScheduler(QtWidgets.QApplication):
         
         yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
         self.scheduleLayout.addWidget(yearWeekLabel, 0, 0)
+        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        startDate = date - datetime.timedelta(days=self.weekDay-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            label = QtWidgets.QLabel(self.days[j])
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            label = QtWidgets.QLabel(text)
             self.scheduleLayout.addWidget(label, 0, 1+2*j, 1, 2)
         for i in range(0, len(self.shifts)):
             label = QtWidgets.QLabel(self.shifts[i])
@@ -1034,6 +1058,7 @@ class SHScheduler(QtWidgets.QApplication):
         self.loadSchedule()
         year = self.year
         week = self.week
+        weekDay = self.weekDay
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
         #schedule
         workbook = openpyxl.Workbook()
@@ -1044,8 +1069,15 @@ class SHScheduler(QtWidgets.QApplication):
         row = 2
         worksheet.cell(row=1, column=1).value = str(year) + '/' + str(week)
         worksheet.cell(row=1, column=1).font = openpyxl.styles.Font(bold=True)
+        date = datetime.datetime.fromisocalendar(int(self.year), int(self.week), int(self.weekDay))
+        startDate = date - datetime.timedelta(days=self.weekDay-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            worksheet.cell(row=1, column=2+j).value = self.days[j]
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            worksheet.cell(row=1, column=2+j).value = text
             worksheet.cell(row=1, column=2+j).font = openpyxl.styles.Font(bold=True)
         for i in range(0, len(self.shifts)):
             worksheet.cell(row=row, column=1).value = self.shifts[i]

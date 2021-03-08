@@ -28,6 +28,8 @@ class SHScheduler(tk.Frame): #class inheritance
         self.year.set(year_week[0])
         self.week = tk.IntVar()
         self.week.set(year_week[1])
+        self.weekDay = tk.IntVar()
+        self.weekDay.set(year_week[2])
         
         tk.Label(self.mainWindow, text='Beosztáskezelő', font=('Helvetica 15 bold')).grid(row=0, column=0)
         tk.Button(self.mainWindow, text='Dolgozók kezelése', width=16, command=self.workerDataManager).grid(row=1, column=0)
@@ -280,8 +282,15 @@ Kilépés:
         self.companyRequestFrame.grid(row=2, column=0, sticky='W')
         tk.Button(self.companyRequestFrame, text='Kérések mentése', command=self.saveCompanyRequest).grid(row=1, column=1, columnspan=2)
         #create the field of entries
+        date = datetime.datetime.fromisocalendar(self.year.get(), self.week.get(), self.weekDay.get())
+        startDate = date - datetime.timedelta(days=self.weekDay.get()-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            tk.Label(self.companyRequestFrame, text=self.days[j], width=8).grid(row=2, column=1+j)
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            tk.Label(self.companyRequestFrame, text=text, width=8).grid(row=2, column=1+j)
         for i in range(0, len(self.shifts)):
             tk.Label(self.companyRequestFrame, text=self.shifts[i], width=8).grid(row=3+i, column=0)
         self.companyRequestEntries, self.companyRequestVariables = [], [] #lists to store the entries and their variables
@@ -481,7 +490,7 @@ Kilépés:
             tk.Label(self.miscFrame, text='Név').grid(row=2, column=0)
             self.workerName = tk.StringVar()
             self.workerName.set('név')
-            self.nameOptions = ttk.Combobox(self.miscFrame, width=18, textvariable=self.workerName)
+            self.nameOptions = ttk.Combobox(self.miscFrame, width=20, textvariable=self.workerName)
             self.nameOptions['values'] = self.workerNames
             self.nameOptions.bind('<<ComboboxSelected>>', self.optionMenuSelectionEvent)
             self.nameOptions.grid(row=2, column=1, columnspan=4)
@@ -498,8 +507,16 @@ Kilépés:
         '''
         year = self.year.get()
         week = self.week.get()
+        weekDay = self.weekDay.get()
+        date = datetime.datetime.fromisocalendar(year, week, weekDay)
+        startDate = date - datetime.timedelta(days=self.weekDay.get()-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            tk.Label(self.workerRequestFrame, text=self.days[j], width=8).grid(row=1, column=1+j)
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            tk.Label(self.workerRequestFrame, text=text, width=8).grid(row=1, column=1+j)
         for i in range(0, len(self.shifts)):
             tk.Label(self.workerRequestFrame, text=self.shifts[i], width=8).grid(row=2+i, column=0)
         self.requestCheckbuttons, self.requestVariables = [], [] #lists to store the entries and their variables
@@ -697,6 +714,7 @@ Kilépés:
         '''
         year = self.year.get()
         week = self.week.get()
+        weekDay = self.weekDay.get()
         row = 1 #same as gridRow
         requests = self.loadRequestsListToShow('workerRequests')
 ##        requestsSum = sum(requests)
@@ -711,8 +729,15 @@ Kilépés:
         self.scheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.scheduleFrame))
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
         tk.Label(self.scheduleFrame, text=str(year)+'/'+str(week)).grid(row=0, column=0)
+        date = datetime.datetime.fromisocalendar(year, week, weekDay)
+        startDate = date - datetime.timedelta(days=self.weekDay.get()-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            tk.Label(self.scheduleFrame, text=self.days[j], width=12, font='Helvetica 10 bold').grid(row=0, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            tk.Label(self.scheduleFrame, text=text, width=12, font='Helvetica 10 bold').grid(row=0, column=1+2*j, columnspan=2) #!!!!!!!!! column(span)
         for i in range(0, len(self.shifts)):
             tk.Label(self.scheduleFrame, text=self.shifts[i], width=8, font='Helvetica 10 bold').grid(row=row, column=0)
             row = row + requests[i]
@@ -856,6 +881,7 @@ Kilépés:
         self.loadSchedule()
         year = self.year.get()
         week = self.week.get()
+        weekDay = self.weekDay.get()
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
         #schedule
         workbook = openpyxl.Workbook()
@@ -866,8 +892,15 @@ Kilépés:
         row = 2
         worksheet.cell(row=1, column=1).value = str(year) + '/' + str(week)
         worksheet.cell(row=1, column=1).font = openpyxl.styles.Font(bold=True)
+        date = datetime.datetime.fromisocalendar(year, week, weekDay)
+        startDate = date - datetime.timedelta(days=self.weekDay.get()-1)
+        #endDate = startDate + datetime.timedelta(days=6)
         for j in range(0, len(self.days)):
-            worksheet.cell(row=1, column=2+j).value = self.days[j]
+            dayDate = startDate + datetime.timedelta(days=j)
+            month, day = dayDate.month, dayDate.day
+            text = str(month) + '.' + str(day) + '.\n' + self.days[j]
+            #text = self.days[j]
+            worksheet.cell(row=1, column=2+j).value = text
             worksheet.cell(row=1, column=2+j).font = openpyxl.styles.Font(bold=True)
         for i in range(0, len(self.shifts)):
             worksheet.cell(row=row, column=1).value = self.shifts[i]
