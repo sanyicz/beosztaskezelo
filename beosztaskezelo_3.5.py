@@ -451,30 +451,45 @@ Kilépés:
         '''
         gui for handling worker requests
         '''
-        self.workerRequestWindow = tk.Toplevel()
-        #self.workerRequestWindow.grab_set()
-        self.workerRequestWindow.title('Ráérések kezelése')
-        tk.Label(self.workerRequestWindow, text='Ráérések kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
+        tableExists = 1
+        year = self.year.get()
+        week = self.week.get()
+        try:
+            self.cursor.execute('SELECT * FROM companyRequest_' + str(year) + '_' + str(week))
+        except:
+            tableExists = 0
+            
+        if tableExists == 0:
+            text = 'Table workerRequests_' + str(year) + '_' + str(week) + ' does not exist.'
+            print(text)
+            self.messageWindow = tk.Toplevel()
+            self.messageWindow.grab_set()
+            tk.Label(self.messageWindow, text=text).grid(row=0, column=0)
+        else:
+            self.workerRequestWindow = tk.Toplevel()
+            #self.workerRequestWindow.grab_set()
+            self.workerRequestWindow.title('Ráérések kezelése')
+            tk.Label(self.workerRequestWindow, text='Ráérések kezelése', font=('Helvetica 15 bold')).grid(row=0, column=0, sticky='W')
 
-        self.miscFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
-        self.miscFrame.grid(row=1, column=0, sticky='W')
-        tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
-        tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
-        tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
-        tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
-        tk.Label(self.miscFrame, text='Név').grid(row=2, column=0)
-        self.workerName = tk.StringVar()
-        self.workerName.set('név')
-        self.nameOptions = ttk.Combobox(self.miscFrame, width=18, textvariable=self.workerName)
-        self.nameOptions['values'] = self.workerNames
-        self.nameOptions.bind('<<ComboboxSelected>>', self.optionMenuSelectionEvent)
-        self.nameOptions.grid(row=2, column=1, columnspan=4)
-        tk.Button(self.miscFrame, text='Ráérést lead', command=self.saveWorkerRequest).grid(row=3, column=1)
-        tk.Button(self.miscFrame, text='Beosztás kezelése', command=self.scheduleManager).grid(row=4, column=1)
-        
-        self.workerRequestFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
-        self.workerRequestFrame.grid(row=2, column=0, sticky='W')
-        self.showWorkerRequestGrid()
+            self.miscFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
+            self.miscFrame.grid(row=1, column=0, sticky='W')
+            tk.Label(self.miscFrame, text='Év').grid(row=0, column=0)
+            tk.Entry(self.miscFrame, textvariable=self.year, width=8).grid(row=0, column=1)
+            tk.Label(self.miscFrame, text='Hét').grid(row=0, column=2)
+            tk.Entry(self.miscFrame, textvariable=self.week, width=8).grid(row=0, column=3)
+            tk.Label(self.miscFrame, text='Név').grid(row=2, column=0)
+            self.workerName = tk.StringVar()
+            self.workerName.set('név')
+            self.nameOptions = ttk.Combobox(self.miscFrame, width=18, textvariable=self.workerName)
+            self.nameOptions['values'] = self.workerNames
+            self.nameOptions.bind('<<ComboboxSelected>>', self.optionMenuSelectionEvent)
+            self.nameOptions.grid(row=2, column=1, columnspan=4)
+            tk.Button(self.miscFrame, text='Ráérést lead', command=self.saveWorkerRequest).grid(row=3, column=1)
+            tk.Button(self.miscFrame, text='Beosztás kezelése', command=self.scheduleManager).grid(row=4, column=1)
+            
+            self.workerRequestFrame = tk.Frame(self.workerRequestWindow, borderwidth=2, relief='ridge')
+            self.workerRequestFrame.grid(row=2, column=0, sticky='W')
+            self.showWorkerRequestGrid()
 
     def showWorkerRequestGrid(self):
         '''
@@ -602,9 +617,9 @@ Kilépés:
             
         if tableExists == 0:
             text = 'Table workerRequests_' + str(year) + '_' + str(week) + ' does not exist.'
+            print(text)
             self.messageWindow = tk.Toplevel()
             self.messageWindow.grab_set()
-            print(text)
             tk.Label(self.messageWindow, text=text).grid(row=0, column=0)
         else:
             self.scheduleWindow = tk.Toplevel()

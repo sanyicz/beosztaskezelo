@@ -86,6 +86,14 @@ class SHScheduler(QtWidgets.QApplication):
         
         self.mainWindow.setLayout(self.mainLayout)
         self.mainWindow.show()
+
+    def setYear(self, year):
+        self.year = year
+        print(self.year)
+
+    def setWeek(self, week):
+        self.week = week
+        print(self.week)
         
     def loadDatabase(self, dataBaseFilename=''):
         '''
@@ -314,11 +322,13 @@ class SHScheduler(QtWidgets.QApplication):
 
         #miscFrame
         yearLabel = QtWidgets.QLabel('Év')
-        self.yearEntry = QtWidgets.QLineEdit()
-        self.yearEntry.setText(str(self.year))
+        yearEntry = QtWidgets.QLineEdit()
+        yearEntry.textChanged.connect(lambda x=yearEntry.text(): self.setYear(x))
+        yearEntry.setText(str(self.year))
         weekLabel = QtWidgets.QLabel('Hét')
-        self.weekEntry = QtWidgets.QLineEdit()
-        self.weekEntry.setText(str(self.week))
+        weekEntry = QtWidgets.QLineEdit()
+        weekEntry.textChanged.connect(lambda x=weekEntry.text(): self.setWeek(x))
+        weekEntry.setText(str(self.week))
         showButton = QtWidgets.QPushButton('Kérések kiírása')
         showButton.clicked.connect(self.loadAndShowCompanyRequest)
         shiftsButton = QtWidgets.QPushButton('Műszakok kezelése')
@@ -327,9 +337,9 @@ class SHScheduler(QtWidgets.QApplication):
         requestsButton.clicked.connect(self.workerRequestManager)
         miscLayout = QtWidgets.QGridLayout() #layout
         miscLayout.addWidget(yearLabel, 0, 0)
-        miscLayout.addWidget(self.yearEntry, 0, 1)
+        miscLayout.addWidget(yearEntry, 0, 1)
         miscLayout.addWidget(weekLabel, 0, 2)
-        miscLayout.addWidget(self.weekEntry, 0, 3)
+        miscLayout.addWidget(weekEntry, 0, 3)
         miscLayout.addWidget(showButton, 0, 4)
         miscLayout.addWidget(shiftsButton, 1, 0)
         miscLayout.addWidget(requestsButton, 2, 0)
@@ -370,8 +380,6 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         creates a table for company requests for the given week
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('CREATE TABLE IF NOT EXISTS companyRequest_' + str(year) + '_' + str(week) + ' AS SELECT * FROM companyRequest WHERE 0')
@@ -394,8 +402,6 @@ class SHScheduler(QtWidgets.QApplication):
         and fills the previousley created entry table with the data
         '''
         self.createCompanyRequest()
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         for j in range(0, len(self.days)):
@@ -432,8 +438,6 @@ class SHScheduler(QtWidgets.QApplication):
         first calls getCompanyRequest() in order to get the data from the entry field
         '''
         self.getCompanyRequest()
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         for j in range(0, len(self.days)):
@@ -555,57 +559,75 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         gui for handling worker requests
         '''
-        self.workerRequestWindow = QtWidgets.QWidget()
-        self.workerRequestWindow.setWindowTitle('Ráérések kezelése')
-        layout = QtWidgets.QGridLayout()
+        tableExists = 1
+        year = self.year
+        week = self.week
+        try:
+            self.cursor.execute('SELECT * FROM companyRequest_' + str(year) + '_' + str(week))
+        except:
+            tableExists = 0
 
-        #header
-        headerLabel = QtWidgets.QLabel('Ráérések kezelése')
-        headerLayout = QtWidgets.QVBoxLayout()
-        headerLayout.addWidget(headerLabel)
-        layout.addLayout(headerLayout, 0, 0)
+        if tableExists == 0:
+            text = 'Table companyRequest_' + str(year) + '_' + str(week) + ' does not exist.'
+            print(text)
+            self.messageWindow = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout() #layout
+            label = QtWidgets.QLabel(text)
+            layout.addWidget(label)
+            self.messageWindow.setLayout(layout)
+            self.messageWindow.show()
+        else:
+            self.workerRequestWindow = QtWidgets.QWidget()
+            self.workerRequestWindow.setWindowTitle('Ráérések kezelése')
+            layout = QtWidgets.QGridLayout()
 
-        #miscFrame
-        yearLabel = QtWidgets.QLabel('Év')
-        self.yearEntry = QtWidgets.QLineEdit()
-        self.yearEntry.setText(str(self.year))
-        weekLabel = QtWidgets.QLabel('Hét')
-        self.weekEntry = QtWidgets.QLineEdit()
-        self.weekEntry.setText(str(self.week))
-        nameLabel = QtWidgets.QLabel('Név')
-        self.nameOptions = QtWidgets.QComboBox()
-        self.nameOptions.addItems(self.workerNames)
-        self.nameOptions.activated.connect(self.optionMenuSelectionEvent)
-        saveButton = QtWidgets.QPushButton('Ráérést lead')
-        saveButton.clicked.connect(self.saveWorkerRequest)
-        scheduleButton = QtWidgets.QPushButton('Beosztás kezelése')
-        scheduleButton.clicked.connect(self.scheduleManager)
-        miscLayout = QtWidgets.QGridLayout() #layout
-        miscLayout.addWidget(yearLabel, 0, 0)
-        miscLayout.addWidget(self.yearEntry, 0, 1)
-        miscLayout.addWidget(weekLabel, 0, 2)
-        miscLayout.addWidget(self.weekEntry, 0, 3)
-        miscLayout.addWidget(nameLabel, 2, 0)
-        miscLayout.addWidget(self.nameOptions, 2, 1, 1, 4)
-        miscLayout.addWidget(saveButton, 3, 1)
-        miscLayout.addWidget(scheduleButton, 4, 1)
-        layout.addLayout(miscLayout, 1, 0)
+            #header
+            headerLabel = QtWidgets.QLabel('Ráérések kezelése')
+            headerLayout = QtWidgets.QVBoxLayout()
+            headerLayout.addWidget(headerLabel)
+            layout.addLayout(headerLayout, 0, 0)
 
-        #workerRequestFrame
-        self.workerRequestLayout = QtWidgets.QGridLayout() #layout
-        layout.addLayout(self.workerRequestLayout, 2, 0)
+            #miscFrame
+            yearLabel = QtWidgets.QLabel('Év')
+            yearEntry = QtWidgets.QLineEdit()
+            yearEntry.textChanged.connect(lambda x=yearEntry.text(): self.setYear(x))
+            yearEntry.setText(str(self.year))
+            weekLabel = QtWidgets.QLabel('Hét')
+            weekEntry = QtWidgets.QLineEdit()
+            weekEntry.textChanged.connect(lambda x=weekEntry.text(): self.setWeek(x))
+            weekEntry.setText(str(self.week))
+            nameLabel = QtWidgets.QLabel('Név')
+            self.nameOptions = QtWidgets.QComboBox()
+            self.nameOptions.addItems(self.workerNames)
+            self.nameOptions.activated.connect(self.optionMenuSelectionEvent)
+            saveButton = QtWidgets.QPushButton('Ráérést lead')
+            saveButton.clicked.connect(self.saveWorkerRequest)
+            scheduleButton = QtWidgets.QPushButton('Beosztás kezelése')
+            scheduleButton.clicked.connect(self.scheduleManager)
+            miscLayout = QtWidgets.QGridLayout() #layout
+            miscLayout.addWidget(yearLabel, 0, 0)
+            miscLayout.addWidget(self.yearEntry, 0, 1)
+            miscLayout.addWidget(weekLabel, 0, 2)
+            miscLayout.addWidget(self.weekEntry, 0, 3)
+            miscLayout.addWidget(nameLabel, 2, 0)
+            miscLayout.addWidget(self.nameOptions, 2, 1, 1, 4)
+            miscLayout.addWidget(saveButton, 3, 1)
+            miscLayout.addWidget(scheduleButton, 4, 1)
+            layout.addLayout(miscLayout, 1, 0)
 
-        self.workerRequestWindow.setLayout(layout)
-        self.workerRequestWindow.show()
+            #workerRequestFrame
+            self.workerRequestLayout = QtWidgets.QGridLayout() #layout
+            layout.addLayout(self.workerRequestLayout, 2, 0)
 
-        self.showWorkerRequestGrid()
+            self.workerRequestWindow.setLayout(layout)
+            self.workerRequestWindow.show()
+
+            self.showWorkerRequestGrid()
 
     def showWorkerRequestGrid(self):
         '''
         shows a check grid for selecting the requests for the given worker
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         for j in range(0, len(self.days)):
@@ -651,8 +673,6 @@ class SHScheduler(QtWidgets.QApplication):
         for daysCheckbuttons in self.requestCheckbuttons:
             for checkbutton in daysCheckbuttons:
                 checkbutton.setChecked(False)
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         workerName = self.nameOptions.currentText()
@@ -690,8 +710,6 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         self.getWorkerRequest()
         workerName = self.nameOptions.currentText()
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('CREATE TABLE IF NOT EXISTS workerRequests_' + str(year) + '_' + str(week) + 
@@ -735,12 +753,12 @@ class SHScheduler(QtWidgets.QApplication):
         if tableExists == 0:
             text = 'Table workerRequests_' + str(year) + '_' + str(week) + ' does not exist.'
             print(text)
-            self.scheduleWindow = QtWidgets.QWidget()
+            self.messageWindow = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout() #layout
             label = QtWidgets.QLabel(text)
             layout.addWidget(label)
-            self.scheduleWindow.setLayout(layout)
-            self.scheduleWindow.show()
+            self.messageWindow.setLayout(layout)
+            self.messageWindow.show()
         else:
             self.scheduleWindow = QtWidgets.QWidget()
             self.scheduleWindow.setWindowTitle('Beosztás kezelése')
@@ -754,11 +772,13 @@ class SHScheduler(QtWidgets.QApplication):
 
             #miscFrame
             yearLabel = QtWidgets.QLabel('Év')
-            self.yearEntry = QtWidgets.QLineEdit()
-            self.yearEntry.setText(str(self.year))
+            yearEntry = QtWidgets.QLineEdit()
+            yearEntry.textChanged.connect(lambda x=yearEntry.text(): self.setYear(x))
+            yearEntry.setText(str(self.year))
             weekLabel = QtWidgets.QLabel('Hét')
-            self.weekEntry = QtWidgets.QLineEdit()
-            self.weekEntry.setText(str(self.week))
+            weekEntry = QtWidgets.QLineEdit()
+            weekEntry.textChanged.connect(lambda x=weekEntry.text(): self.setWeek(x))
+            weekEntry.setText(str(self.week))
             showWorkerRequestsButton = QtWidgets.QPushButton('Ráérések kiírása')
             showWorkerRequestsButton.clicked.connect(self.showWorkerRequests)
             createScheduleButton = QtWidgets.QPushButton('Beosztás készítése')
@@ -803,8 +823,6 @@ class SHScheduler(QtWidgets.QApplication):
         loads worker max number of request for shifts for the week into a list
         '''
         requests = list(range(len(self.shifts))) #[0]*len(self.shifts)
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         for j in range(0, len(self.days)):
@@ -833,8 +851,6 @@ class SHScheduler(QtWidgets.QApplication):
         creates a frame for handling worker requests for the given week
         checks if a worker is scheduled
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         row = 1 #same as gridRow
@@ -850,9 +866,6 @@ class SHScheduler(QtWidgets.QApplication):
         self.scheduleLayout = QtWidgets.QGridLayout() #layout
         self.scheduleByHandCheckbuttons, self.scheduleByHandVariables, self.scheduleByHandNameLabels = [], [], []
         
-##        self.scheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.scheduleFrame))
-##        self.scheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.scheduleFrame))
-
         yearWeekLabel = QtWidgets.QLabel(str(year) + '/' + str(week))
         self.scheduleLayout.addWidget(yearWeekLabel, 0, 0)
         for j in range(0, len(self.days)):
@@ -918,8 +931,6 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         loads the schedule and the backups for the given week
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.schedule = [] #
@@ -961,11 +972,9 @@ class SHScheduler(QtWidgets.QApplication):
         loads the schedule for the given week
         and shows it in a seperate window
         '''
-        year = self.yearEntry.text()
-        week = self.weekEntry.text()
+        year = self.year
+        week = self.week
         try:
-##            self.showScheduleWindow.bind('<Enter>', lambda event: self.highlightOn(event, frame=self.showScheduleFrame))
-##            self.showScheduleWindow.bind('<Leave>', lambda event: self.highlightOff(event, frame=self.showScheduleFrame))
             self.loadSchedule()
             self.showScheduleWindow = QtWidgets.QWidget()
             requests = self.loadRequestsListToShow('companyRequest')
@@ -1020,8 +1029,6 @@ class SHScheduler(QtWidgets.QApplication):
         saves the backup workers for the week on a different worksheet (same as loading the scheduled workers)
         '''
         self.loadSchedule()
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         filename = 'schedule_' + str(year) + '_' + str(week) + '.xlsx'
@@ -1088,8 +1095,6 @@ class SHScheduler(QtWidgets.QApplication):
         '''
         deletes schedule for the given week
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS schedule_' + str(year) + '_' + str(week))
@@ -1128,8 +1133,6 @@ class SHScheduler(QtWidgets.QApplication):
         if the workers requested by the company for a given shift is met,
         the possibility to check other workers for that shift is disabled
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         requests = self.loadRequestsListToShow('workerRequests') #gives the max number of requests for shifts
@@ -1184,8 +1187,6 @@ class SHScheduler(QtWidgets.QApplication):
         creates a backup table for the given week
         from the workers who are not scheduled
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS backup_'  + str(year) + '_' + str(week))
@@ -1215,8 +1216,6 @@ class SHScheduler(QtWidgets.QApplication):
         creates schedule from the check table
         also calls createBackup()
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('DROP TABLE IF EXISTS schedule_'  + str(year) + '_' + str(week))
@@ -1242,8 +1241,6 @@ class SHScheduler(QtWidgets.QApplication):
         completes and saves the schedule from the check table based on the selected algorithm
         also calls createBackup() and then getNumberOfScheduledDays()
         '''
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.createSchedule()
@@ -1316,8 +1313,6 @@ class SHScheduler(QtWidgets.QApplication):
         determines how many days each worker has requested for the week
         '''
         self.numberOfRequestedDays = {}
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('SELECT workerId FROM workers')
@@ -1336,8 +1331,6 @@ class SHScheduler(QtWidgets.QApplication):
         determines how many days each worker has been scheduled for for the week
         '''
         self.numberOfScheduledDays = {}
-        self.year = self.yearEntry.text()
-        self.week = self.weekEntry.text()
         year = self.year
         week = self.week
         self.cursor.execute('SELECT workerId FROM workers')
